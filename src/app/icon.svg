@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MealNote">
+  <rect width="64" height="64" rx="14" fill="#059669"/>
+  <path d="M14 30h36c-1.4 12-7.4 18-18 18S15.4 42 14 30Z" fill="#fff"/>
+  <path d="M20 24c4-7 20-7 24 0" fill="none" stroke="#ECFDF5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M23 52h18" stroke="#C2410C" stroke-width="4" stroke-linecap="round"/>
+</svg>

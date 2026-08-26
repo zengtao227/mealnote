@@ -1,8 +1,8 @@
 # MealNote 开发计划
 
-**目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。  
-**当前阶段：** V1 demo baseline 已完成；进入生产化前 hardening。  
-**最后复核：** 2026-08-25  
+**目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。
+**当前阶段：** S1 已完成并合并；S2 已修复三轮独立审查 findings，等待 PR #6 再复审；S3 尚未开始。
+**最后复核：** 2026-08-26
 **工作方式：** 垂直切片、每步可运行、每个不确定性都保留回退；不为了“生产感”提前引入复杂基础设施。
 
 ## 1. 交付原则
@@ -22,24 +22,29 @@
 - 本地 demo 可完成：登录 → 文本/语音/照片输入 → 结构化候选 → 用户修改 → Nutrition Engine → `localStorage` 保存 → 今日汇总；
 - AI 输出使用严格 schema，模型返回的 kcal/宏量营养字段不会成为系统真值；
 - OpenAI Responses API provider 已有服务端实现，但尚未用真实 key 做质量验收；
-- Supabase/PostgreSQL 初始 migration 和 RLS 已存在，但尚未连接真实项目；
-- Next.js 已在 PR #3 从 16.2.7 升级到 16.3.3，并在 Node.js 22 / Linux 上通过 clean lockfile、`npm ci`、lint、typecheck、7/7 unit tests、production build 和 `npm audit` 0 vulnerabilities。
+- Supabase/PostgreSQL schema、RLS 与 owner-integrity migration 已存在，但尚未连接真实账号应用层；
+- Next.js 已在 PR #3 从 16.2.7 升级到 16.3.3，并在 Node.js 22 / Linux 上通过 clean lockfile、`npm ci`、lint、typecheck、unit tests、production build 和 `npm audit` 0 vulnerabilities；
+- S1 已在 PR #5 闭合跨表 owner integrity，并在 PostgreSQL 15.19 上通过顺序、特权/RLS-bypass、并发和失败迁移回滚测试；PR #5 已合并到 `main` commit `bbb7314970596bd3a753b94ebbdd119ea4027a19`；
+- S2 PR #6 首轮独立审查在 head `575b87bb75cf98af3cfe48f1a183e07f8eb3a435` 找到 2 个 P1 和 1 个 P2：在途计算旧响应覆盖新编辑、heuristic substring 把复合名称升级成可信 canonical、direct API provenance 被描述得比实际可验证性更强；这些 finding 已修复；
+- 第二轮独立复审在 head `3e7fcfe2837a22381becf0a0c3b3d89307039866` 找到 1 个 P1：heuristic 仍以整餐/food profile 为粒度分类和抑制 candidate，导致一个分句中的 trusted `米饭`/`红烧排骨` 可以错误授权、重绑或吞掉另一个分句里的 compound/broad candidate；
+- 第三轮独立复审在 head `b471bd62ccf75a3b2a455c65553f1c764dc07831` 找到 1 个 P1：clause segmentation 本身仍被当成 authority 边界，未枚举连接词 `以及 / 与 / 还有` 可把两个 food mention 留在同一 segment，再次触发 compound → trusted canonical 和份量错绑；当前 candidate 已改成 mention-span authority construction；
+- mention-span S2 内容树已在 Linux / Node.js 22.23.2 / PostgreSQL 15.19 上通过 `npm ci`（0 vulnerabilities）、lint、typecheck、10 files / 55 tests、production build、S1 数据库全套回归和完整 diff whitespace check；最终仍需 Codex 新 exact-range 复审 APPROVE 后才能合并。
 
-### 2.2 2026-08-25 独立审查结论
+### 2.2 2026-08-26 当前生产化结论
 
 - **本地 V1 demo：GO。**
-- **真实 Supabase + OpenAI 用户环境：NO-GO，直到下列 pre-cloud gates 闭合。**
+- **数据库 owner-integrity 基础：GO。** S1 已完成并合并。
+- **S2 confirmation + nutrition correctness：三轮 NO-GO findings 已修复，等待 PR #6 再复审。**
+- **真实 Supabase + OpenAI 用户环境：仍为 NO-GO。**
 
-当前阻塞生产化的不是整体架构，而是几个可局部修复的边界：
+当前剩余 pre-cloud 关键边界主要是：
 
-1. PostgreSQL/RLS 只检查单表 `owner_id`，还没有保证 `meal_items` / `ai_analysis_runs` 等引用对象与当前 owner 一致；
-2. 一旦服务器配置真实 `OPENAI_API_KEY`，当前 `/api/analyze` 尚无真实用户鉴权、per-user rate limit 或成本保护；
-3. 图片校验目前主要依赖 MIME/data URL、大小和 magic bytes，不能证明图片完整、可解码；
-4. 未匹配食物会落到通用 150 kcal/100g demo fallback，当前仍可继续保存；
-5. `needs_confirmation` 尚未形成真正的确认门，用户修改后的 provenance / assumptions 也未完整更新；
-6. `localStorage` 保存失败没有错误回退，保存对象也没有 schema/version 校验。
+1. 一旦服务器配置真实 `OPENAI_API_KEY`，当前 `/api/analyze` 尚无真实用户鉴权、per-user rate limit 或成本保护；
+2. 图片校验目前主要依赖 MIME/data URL、大小和 magic bytes，不能证明图片完整、可解码；
+3. `localStorage` 保存失败没有错误回退，保存对象也没有 schema/version 校验；
+4. S2 当前 candidate 虽已闭合已知 confirmation/nutrition correctness findings，但在 PR #6 独立复审 APPROVE 前不能视为已合并基线。
 
-这些问题应按下面的最小切片修复，不需要重写应用。
+这些问题应继续按下面的最小切片修复，不需要重写应用。
 
 ## 3. 里程碑与验收
 
@@ -56,9 +61,9 @@
 - [x] `localStorage` 正常路径保存餐食并生成今日汇总；
 - [x] `npm install` / `npm run dev` 运行方法写入 README；
 - [ ] 对 `localStorage` quota/security 等保存失败提供用户可理解的回退；
-- [ ] 低置信/关键缺失项真正进入“必须确认”状态，而不是只有 schema 字段。
+- [x] 低置信/关键缺失项进入真实“必须确认”状态；UI 与 Nutrition Engine/API 均会阻止未确认项继续计算（S2 PR #6，待独立复审）。
 
-**验收证据：** 浏览器手动完成一餐；刷新后记录仍在；无云凭据时不调用网络 AI；失败路径和低置信确认需在后续 hardening 补齐后才可宣称 PASS。
+**验收证据：** 浏览器主流程可完成一餐；刷新后本地记录仍在；无云凭据时不调用网络 AI。保存失败回退留给 S3；确认边界及 stale calculation freshness 已有自动化回归，最终以 S2 独立复审为门。
 
 ### M1：领域契约与 Nutrition Engine 固化
 
@@ -68,15 +73,21 @@
 - [x] 独立 OpenAI / heuristic provider 边界；
 - [x] schema 拒绝 AI 直接提供营养真值；
 - [x] 份量表达支持半碗、一碗、几块、三分之一盘、一勺、一两、两口的 demo 解析；
-- [x] 当前计算结果包含范围、置信度和来源；
+- [x] 当前计算结果包含范围、识别元数据和来源；
 - [ ] 定义稳定的 `food`、`recipe`、`portion profile`、`meal item`、`nutrition estimate` / snapshot 领域类型和版本；
-- [ ] 未匹配食物返回显式 `needs_user_input` / fallback 状态，不能静默作为可保存的可信结果；
-- [ ] canonical/alias resolver 不使用 substring 结果直接成为营养 authority；
-- [ ] 用户修改食物名、重量、油量后记录 `user-confirmed` provenance，并同步更新 assumptions / confirmation state；
-- [ ] 为油量、合菜分摊、未知食物、个人餐具和历史快照建立 fixture 测试；
+- [x] 未匹配/宽泛/复合食物不再静默产生 generic nutrition；Nutrition Engine/API fail-closed，用户必须改成明确支持的食物或菜谱（S2 PR #6，待独立复审）；
+- [x] canonical/alias resolver 只允许规范化后的 exact canonical / curated exact alias 成为 nutrition authority；
+- [x] heuristic candidate construction 绑定到单个 food mention span：每次 alias occurrence 保存独立 start/end、份量 context 和 trusted/embedded 状态；authority、suppression、dedupe 不再依赖整餐或 clause segmentation；
+- [x] broad suppression 仅允许 trusted occurrence 抑制与其实际 overlap 的 broad occurrence；一个 trusted mention 不能授权、重绑或吞掉另一个位置的 compound/broad mention；
+- [x] 已知连接词只用于恢复明确 mention 的正常 UX；未识别连接词不能制造 authority，而是 fail-closed，因此安全性不依赖穷举中文 connector；
+- [x] `needs_confirmation` 是真实 UI/domain/API gate；确认前编辑不等于确认，确认后再编辑会使确认失效；
+- [x] 在途 Nutrition calculation 使用 revision + AbortController；编辑、删除、确认状态变化、重置、返回输入或开始新分析都会使旧请求失效，旧响应不能成为当前 nutrition；
+- [x] 用户编辑会清除 stale assumptions；field provenance、confirmation state、recognition source/confidence 在当前无服务端原始 analysis binding 的阶段明确标记为 `client-reported`，不能当成已验证审计 provenance；
+- [x] 为未知食物、confirmation lifecycle、candidate/authority 分离、single-compound、mention-span connector 双向组合、重复 trusted mention、direct API tampering、deferred stale response 和代表性中餐建立 regression tests；
+- [ ] 继续补合菜分摊、个人餐具和历史快照等更完整 fixture；
 - [ ] 持久化 `engine_version` 和输入数据源版本。
 
-**验收证据：** 更换 analyzer 不改变 engine fixture 结果；未知食物不会无提示写入可信营养记录；用户确认值可与原 AI 候选区分。
+**验收证据：** 当前 S2 candidate 上，更换 analyzer 不改变固定 Nutrition fixture；未知/宽泛/复合名称不会制造隐藏 authority；`以及 / 与 / 还有 × 糯米饭 / 蛋炒米饭 × 双向顺序` 均保留两个独立 mention candidate 与正确份量；`半碗米饭以及一碗米饭` 保留 100g / 200g 两个 trusted occurrence；旧计算响应不能覆盖新 review state；客户端可篡改的 review metadata 不再被表述为已验证审计来源。最终 PASS 仍以 PR #6 独立复审为门。
 
 ### M2：真实数据边界与个人记忆
 
@@ -96,18 +107,19 @@
 **目标：** 在数据库所有权模型先安全的前提下，再接真实账号和服务端持久化。
 
 - [x] 初始 PostgreSQL schema、RLS policy 和 migration 文件已建立；
-- [ ] 修复跨表 owner integrity：至少覆盖 `meal_items → meals`、`ai_analysis_runs → meals`，并审查 `food_id` / `recipe_id` 对 system row 与 own row 的合法引用；
-- [ ] 用两个用户的 adversarial tests 证明不能创建、读取、修改或关联另一个用户的私有对象；
+- [x] 跨表 owner integrity 已闭合：`meal_items → meals`、`ai_analysis_runs → meals` 使用 owner-aware meal FK；`food_id` / `recipe_id` 只允许 system row 或 same-owner private row；
+- [x] 两用户 + privileged/RLS-bypass adversarial tests 覆盖跨 owner 关系写入、父 owner 转移、四种 catalog 并发事务顺序和失败迁移回滚；
 - [ ] Supabase Auth 登录、退出、会话过期和错误状态；
 - [ ] 服务端从 authenticated session 派生 owner，拒绝浏览器自报 `user_id` / `owner_id`；
+- [ ] Auth 接入后补真实会话下的跨账号读/改端到端测试；
 - [ ] 服务端保存 meal、items、inputs、estimates、recipes 和 ai runs；
 - [ ] localStorage 与 PostgreSQL 通过明确 storage boundary 隔离，避免页面维护两套业务规则；
 - [ ] 照片/音频对象存储、删除和留存策略；
 - [ ] 导出/删除用户数据的最小路径。
 
-**硬门：** 在 owner-integrity adversarial tests 通过前，不连接真实用户数据。
+**硬门：** 数据库 owner-integrity 已通过；真实用户数据仍必须等 Auth + session-derived owner 完成后才能接入。
 
-**验收证据：** 两个账号无法互读、互改、互相挂接外键；刷新和跨设备登录能读取自己的服务端历史；凭据不进入客户端 bundle。
+**验收证据：** S1 已证明数据库关系不能跨 owner 污染；S4 还需证明真实账号无法互读、互改且刷新/跨设备可读取自己的服务端历史，凭据不进入客户端 bundle。
 
 ### M4：OpenAI Responses API 生产化
 
@@ -148,30 +160,34 @@
 
 - [x] Next.js / eslint-config-next 16.2.7 → 16.3.3；
 - [x] clean cross-platform lockfile；
-- [x] Node.js 22 Linux 下 lint、typecheck、7/7 tests、build、audit 全通过；
+- [x] Node.js 22 Linux 下 lint、typecheck、tests、build、audit 全通过；
 - [x] PR #3 独立审查 APPROVE 并合并。
 
-### S1 — 数据库 authority / owner integrity（**下一步开发**）
+### S1 — 数据库 authority / owner integrity（已完成）
 
-只处理数据库关系和验证，不同时接 Auth UI 或 OpenAI：
+- [x] 明确 own meal、own private food/recipe、system food/recipe 的允许关系；
+- [x] `meal_items` 与 `ai_analysis_runs` 使用 owner-aware meal FK；
+- [x] private catalog relationship 通过数据库 trigger + row locking 保持 same-owner，system rows 保持共享；
+- [x] 两用户、privileged/RLS-bypass、四种并发顺序与失败迁移回滚测试；
+- [x] PR #5 经独立复审 APPROVE，并 squash-merge 到 `main` commit `bbb7314970596bd3a753b94ebbdd119ea4027a19`。
 
-1. 明确每个 FK 的允许关系：own meal、own private food/recipe、system food/recipe；
-2. 增加数据库级约束/安全函数，使 `meal_items.owner_id` 与其引用对象不能跨用户；
-3. `ai_analysis_runs.meal_id` 不得指向其他 owner 的 meal；
-4. 建立两个用户的 adversarial SQL tests；
-5. 保持现有 demo、API 和 UI 行为不变。
+### S2 — 确认边界与 Nutrition correctness（三轮 findings 已修复，PR #6 待再复审）
 
-**完成条件：** 能用测试证明“伪造自己 `owner_id` + 猜到/拿到别人 UUID”仍不能创建跨租户关系。
+- [x] unknown/generic fallback 不再静默成为可信可保存结果；
+- [x] `needs_confirmation` 成为真实 UI/domain/API gate；
+- [x] stale calculation response 使用 revision + abort fail-closed，edit/remove/reset/new analysis 后旧结果无法落地；
+- [x] trusted resolver 只接受 exact canonical/curated alias；
+- [x] heuristic candidate construction 改为 mention-span：每个食物 occurrence 绑定独立 start/end 与 portion context，不依赖整餐或 clause segmentation 共享 authority；
+- [x] broad suppression 只允许 overlap 的 trusted occurrence 覆盖同一 broad occurrence；非 overlap mention 不互相授权或吞掉；
+- [x] unknown connector/segmentation fail-closed；已知 joiner 仅用于恢复正常 explicit trusted mention UX，而不是安全前提；
+- [x] broad/compound heuristic candidate 与 trusted nutrition authority 分层，compound acknowledgement 本身仍不能制造 nutrition authority；
+- [x] review provenance / recognition / confirmation metadata 明确为 `client-reported`，不冒充 server-verified provenance；
+- [x] 补充 resolver、review、engine、API、heuristic、request-guard、mention-span adversarial combinations 和代表性中餐 fixture tests；
+- [x] clean verification：Node.js 22.23.2，10 files / 55 tests，build，S1 PostgreSQL 15.19 regression，diff check 全 PASS。
 
-### S2 — 确认边界与 Nutrition correctness
+**完成门：** PR #6 必须经新的 exact-range 独立复审 APPROVE 后才能合并并把 S2 标记为 DONE。
 
-1. unknown/generic fallback 不能静默成为可信可保存结果；
-2. `needs_confirmation` 成为真实 UI/domain gate；
-3. 用户修改后的 provenance、assumptions、confidence/confirmation state 一致；
-4. 修正 substring food matching authority；
-5. 补充 Nutrition fixture tests。
-
-### S3 — 输入与本地持久化 hardening
+### S3 — 输入与本地持久化 hardening（S2 APPROVE/merge 后唯一下一步）
 
 1. 对 JPEG/PNG/WebP 做结构/解码级验证，拒绝 truncated/malformed image；
 2. 继续保留真实 request body byte limit；
@@ -180,7 +196,7 @@
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 
-只有 S1 通过后开始真实账号接入；只有 S1/S2/S3 的边界明确后才迁移真实用户历史。
+只有 S1/S2/S3 的边界完成后开始真实账号接入与用户历史迁移；数据库 owner integrity 已是前置基础，不应在 S4 重新设计。
 
 ### S5 — 真实 OpenAI quality slice
 
@@ -198,25 +214,28 @@ npm test
 npm run build
 ```
 
-依赖变更另跑 `npm audit`。数据库变更必须增加对应的权限/完整性回归测试；图片边界变更必须增加 malformed/truncated fixture；持久化变更必须测试旧/坏数据和写失败。
+依赖变更另跑 `npm audit`。数据库变更必须增加对应的权限/完整性回归测试；图片边界变更必须增加 malformed/truncated fixture；持久化变更必须测试旧/坏数据和写失败；异步响应会覆盖可变用户状态的路径必须增加 deferred/stale-response 回归。
 
 ### 审查方式
 
 - 每个 hardening slice 单独分支/PR；
 - PR body 写清 exact base/head、changed files、验证命令和已知非目标；
 - 不把下一阶段的“顺手重构”混入当前修复；
-- 独立审查重点检查 fail-closed、attacker-controlled input 和 authority source。
+- 独立审查重点检查 fail-closed、attacker-controlled input、authority source 和跨层/跨时间状态一致性；
+- candidate/authority 变更必须同时测试 producer → review → resolver/engine 的完整链路，并覆盖同 profile 多 occurrence、未知/未枚举 connector、双向顺序和重复 trusted mention，不能只测孤立单条输入或已知分隔符。
 
 ## 6. 风险登记
 
 | 风险 | 早期信号 | 应对 |
 | --- | --- | --- |
-| 跨用户关系污染 | 自己的 row 能引用其他 owner UUID | DB 级 owner-integrity + adversarial tests |
+| 跨用户关系污染 | 自己的 row 能引用其他 owner UUID | S1 DB owner-integrity + adversarial/concurrency tests；S4 再验证真实 Auth 会话隔离 |
 | 公开 OpenAI 端点产生费用 | 未登录即可调用真实 provider | Auth first；per-user rate/budget；真实 key 最后部署 |
 | AI 识别常见中餐不稳定 | 召回率低、确认次数高 | 文本优先、家庭菜谱、fixture 验证，必要时暂停照片扩张 |
-| 未知菜产生假精确营养 | generic fallback 直接保存 | 显式低置信/需输入状态，不作为可信 nutrition authority |
-| 图片伪造/截断 | magic bytes 通过但文件不可解码 | 结构/解码校验、尺寸限制、malformed tests |
-| 本地保存失败导致输入丢失 | quota/security error | 捕获写失败、保留当前 draft、提供重试 |
+| 未知/复合菜产生假精确营养 | fuzzy mention 被改写成 trusted canonical，或另一 occurrence 导致 candidate 被吞/份量错绑 | S2 exact resolver + mention-span candidate authority + overlap-only suppression + unknown-segmentation fail-closed tests |
+| 旧计算响应覆盖新编辑 | 请求期间修改/删除后旧 nutrition 再出现或可保存 | S2 request revision + AbortController + deferred edit/remove tests |
+| 客户端 metadata 被误当审计真值 | direct API 可伪造 edited_fields/source/confidence | 当前全部标记 client-reported；未来服务端 analysis binding 后再建立 verified provenance |
+| 图片伪造/截断 | magic bytes 通过但文件不可解码 | S3 结构/解码校验、尺寸限制、malformed tests |
+| 本地保存失败导致输入丢失 | quota/security error | S3 捕获写失败、保留当前 draft、提供重试 |
 | 食物数据许可/质量不足 | 来源或版本无法追溯 | 来源登记、抽样审核、版本化导入 |
 | 范围膨胀 | 社区/商城/复杂 AI coach 进入 backlog | 回到 V1 核心记录链路和验收指标 |
 
@@ -225,15 +244,21 @@ npm run build
 - **Next.js 单体 PWA：** 保持；当前瓶颈不是规模基础设施；
 - **AI provider 可替换：** 保持；模型不拥有历史和营养真值；
 - **Nutrition Engine 独立：** 保持；这是产品可信度核心；
+- **candidate 与 nutrition authority 分离：** S2 明确固化；模糊/复合自然语言可成为待用户修正的候选，但不能直接获得可信营养 profile；
+- **candidate 粒度：** heuristic authority 绑定到 individual mention span；meal/clause/connector 只可影响展示或 UX，不能作为共享 authority 边界；
+- **unknown segmentation：** 未识别连接形式必须 fail-closed，不能因为 parser 没切开就让 trusted mention 给邻近 compound mention 授权；
+- **异步计算 freshness：** UI 只有与当前 review revision 一致的 calculation response 才能成为当前 nutrition；旧请求在 review state 改变时 abort/invalidated；
+- **provenance verification：** S2 当前 API 没有服务端原始 analysis binding，因此 review provenance、confirmation 和 recognition metadata 只能标记为 `client-reported`；以后建立服务端绑定后才能升级为 verified；
 - **local demo：** 保持为无云凭据的开发/回退模式，但不能冒充生产账号；
-- **PostgreSQL/RLS：** 作为生产 authority，但必须先闭合跨表 owner integrity；
+- **PostgreSQL/RLS：** 作为生产 authority；S1 已闭合关系级 owner integrity，S4 再接真实 Auth/session；
 - **真实 OpenAI key：** 最后接入，必须位于 Auth + usage protection 之后；
 - **不引入微服务/Kubernetes/vector DB：** 除非后续真实负载证明需要。
 
 ## 8. 下一步
 
-**现在应该继续开发。下一步唯一优先项是 S1：数据库 authority / owner integrity hardening。**
+**当前不要开始 S3，先完成 PR #6 当前 exact-range 的独立复审。**
 
-S1 完成并独立审查通过后，再进入 S2。不要在 S1 PR 中同时实现 Supabase 登录、真实 OpenAI 调用、Nutrition UI 重构或新产品功能。
+- 如果 PR #6 **APPROVE**：合并 S2，把 S2 标记为 DONE，然后 S3 成为唯一下一开发优先项；
+- 如果 PR #6 **NO-GO**：只修复有效的 S2 P0/P1/P2 finding，不混入 S3/Auth/OpenAI 等后续工作。
 
 项目的稳定上下文、当前事实、关键边界和已知风险统一记录在根目录 [`CONTEXT.md`](../CONTEXT.md)。

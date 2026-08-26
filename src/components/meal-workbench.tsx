@@ -18,11 +18,21 @@ import {
   Utensils,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import type { InputSource, MealAnalysis, MealItemAnalysis, OilLevel } from "@/lib/ai/meal-analysis-schema";
+import type { InputSource, MealAnalysis, OilLevel } from "@/lib/ai/meal-analysis-schema";
 import type { NutritionResult } from "@/lib/nutrition/engine";
+import { RequestRevisionGuard, type RequestRevisionToken } from "@/lib/nutrition/request-guard";
+import {
+  acknowledgeNutritionItem,
+  applyNutritionItemEdit,
+  createNutritionInputItem,
+  type EditableNutritionField,
+  type EditableNutritionItemUpdates,
+  type NutritionInputItem,
+} from "@/lib/nutrition/review";
 
 type WorkbenchStage = "input" | "confirm" | "result";
 type InputMode = "text" | "voice" | "image";
+type ReviewedMealAnalysis = Omit<MealAnalysis, "items"> & { items: NutritionInputItem[] };
 
 interface AnalysisApiResponse {
   analysis?: MealAnalysis;
@@ -75,6 +85,12 @@ const OIL_OPTIONS: Array<{ value: OilLevel; label: string }> = [
   { value: "unknown", label: "不确定" },
 ];
 
+const EDITED_FIELD_LABELS: Record<EditableNutritionField, string> = {
+  food_name: "食物名称",
+  estimated_grams: "估计重量",
+  oil_level: "用油",
+};
+
 function mealsKeyForProfile(profileName: string): string {
   return `${MEALS_KEY_PREFIX}:${encodeURIComponent(profileName)}`;
 }
@@ -108,9 +124,15 @@ function formatProvider(provider: string | undefined): string {
   return provider ? labels[provider] ?? provider : "结构化识别";
 }
 
+function formatEditedFields(fields: EditableNutritionField[]): string {
+  return fields.map((field: EditableNutritionField) => EDITED_FIELD_LABELS[field]).join("、");
+}
+
 export function MealWorkbench() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const analysisGuardRef = useRef<RequestRevisionGuard>(new RequestRevisionGuard());
+  const calculationGuardRef = useRef<RequestRevisionGuard>(new RequestRevisionGuard());
   const [hydrated, setHydrated] = useState<boolean>(false);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [loginName, setLoginName] = useState<string>("");
@@ -119,7 +141,7 @@ export function MealWorkbench() {
   const [mealText, setMealText] = useState<string>("");
   const [imageDataUrl, setImageDataUrl] = useState<string | undefined>();
   const [imageName, setImageName] = useState<string | undefined>();
-  const [analysis, setAnalysis] = useState<MealAnalysis | undefined>();
+  const [analysis, setAnalysis] = useState<ReviewedMealAnalysis | undefined>();
   const [nutrition, setNutrition] = useState<NutritionResult | undefined>();
   const [provider, setProvider] = useState<string | undefined>();
   const [warning, setWarning] = useState<string | undefined>();
@@ -159,6 +181,27 @@ export function MealWorkbench() {
     [todayMeals],
   );
 
+  const pendingConfirmationCount: number = useMemo(
+    () =>
+      analysis?.items.filter(
+        (item: NutritionInputItem) =>
+          item.needs_confirmation && !item.confirmation_acknowledged,
+      ).length ?? 0,
+    [analysis],
+  );
+
+  function invalidateAnalysisRequest(): void {
+    analysisGuardRef.current.invalidate();
+    setIsLoading(false);
+  }
+
+  function invalidateCalculation(): void {
+    calculationGuardRef.current.invalidate();
+    setNutrition(undefined);
+    setJustSaved(false);
+    setIsLoading(false);
+  }
+
   function signIn(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const normalizedName: string = loginName.trim();
@@ -181,6 +224,8 @@ export function MealWorkbench() {
   }
 
   function resetMeal(): void {
+    analysisGuardRef.current.invalidate();
+    calculationGuardRef.current.invalidate();
     speechRecognitionRef.current?.stop();
     setStage("input");
     setInputMode("text");
@@ -193,10 +238,12 @@ export function MealWorkbench() {
     setWarning(undefined);
     setError(undefined);
     setJustSaved(false);
+    setIsLoading(false);
     setIsListening(false);
   }
 
   function loadExample(): void {
+    invalidateAnalysisRequest();
     setMealText("半碗米饭，番茄炒蛋大概吃了三分之一盘，红烧排骨四块，冬瓜汤一碗");
     setInputMode("text");
     setError(undefined);
@@ -207,6 +254,7 @@ export function MealWorkbench() {
     if (!file) {
       return;
     }
+    invalidateAnalysisRequest();
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       setError("照片格式仅支持 JPEG、PNG 或 WebP。 ");
       event.target.value = "";
@@ -218,18 +266,30 @@ export function MealWorkbench() {
       return;
     }
 
+    const fileToken: RequestRevisionToken = analysisGuardRef.current.begin();
     const reader: FileReader = new FileReader();
     reader.onload = (): void => {
+      if (!analysisGuardRef.current.isCurrent(fileToken)) {
+        return;
+      }
       if (typeof reader.result !== "string") {
+        analysisGuardRef.current.invalidate();
         setError("照片读取失败，请换一张重试。 ");
         return;
       }
+      analysisGuardRef.current.invalidate();
       setImageDataUrl(reader.result);
       setImageName(file.name);
       setInputMode("image");
       setError(undefined);
     };
-    reader.onerror = (): void => setError("照片读取失败，请换一张重试。 ");
+    reader.onerror = (): void => {
+      if (!analysisGuardRef.current.isCurrent(fileToken)) {
+        return;
+      }
+      analysisGuardRef.current.invalidate();
+      setError("照片读取失败，请换一张重试。 ");
+    };
     reader.readAsDataURL(file);
   }
 
@@ -245,18 +305,39 @@ export function MealWorkbench() {
       return;
     }
 
+    invalidateAnalysisRequest();
+    speechRecognitionRef.current?.stop();
+    const voiceToken: RequestRevisionToken = analysisGuardRef.current.begin();
     const recognition: SpeechRecognitionLike = new Recognition();
     recognition.lang = "zh-CN";
     recognition.interimResults = false;
     recognition.continuous = false;
     recognition.onresult = (event: SpeechResultEvent): void => {
+      if (!analysisGuardRef.current.isCurrent(voiceToken)) {
+        return;
+      }
       const transcript: string = event.results[0]?.[0]?.transcript ?? "";
+      analysisGuardRef.current.invalidate();
       setMealText((currentText: string) => [currentText, transcript].filter(Boolean).join("，"));
       setInputMode("voice");
       setError(undefined);
+      setIsListening(false);
     };
-    recognition.onerror = (): void => setError("没有听清，请重试或直接输入。 ");
-    recognition.onend = (): void => setIsListening(false);
+    recognition.onerror = (): void => {
+      if (!analysisGuardRef.current.isCurrent(voiceToken)) {
+        return;
+      }
+      analysisGuardRef.current.invalidate();
+      setError("没有听清，请重试或直接输入。 ");
+      setIsListening(false);
+    };
+    recognition.onend = (): void => {
+      if (!analysisGuardRef.current.isCurrent(voiceToken)) {
+        return;
+      }
+      analysisGuardRef.current.invalidate();
+      setIsListening(false);
+    };
     speechRecognitionRef.current = recognition;
     setIsListening(true);
     recognition.start();
@@ -267,6 +348,9 @@ export function MealWorkbench() {
       setError("请描述这一餐，或选择一张照片。 ");
       return;
     }
+    invalidateCalculation();
+    invalidateAnalysisRequest();
+    const requestToken: RequestRevisionToken = analysisGuardRef.current.begin();
     setIsLoading(true);
     setError(undefined);
     setWarning(undefined);
@@ -279,53 +363,104 @@ export function MealWorkbench() {
           source: deriveSource(inputMode, Boolean(imageDataUrl)),
           image_data_url: imageDataUrl,
         }),
+        signal: requestToken.signal,
       });
       const body: AnalysisApiResponse = (await response.json()) as AnalysisApiResponse;
+      if (!analysisGuardRef.current.isCurrent(requestToken)) {
+        return;
+      }
       if (!response.ok || !body.analysis) {
         throw new Error(body.error ?? "没有得到可确认的识别结果。 ");
       }
-      setAnalysis(body.analysis);
+      setAnalysis({
+        ...body.analysis,
+        items: body.analysis.items.map(createNutritionInputItem),
+      });
+      setNutrition(undefined);
+      setJustSaved(false);
       setProvider(body.provider);
       setWarning(body.warning);
       setStage("confirm");
     } catch (caughtError: unknown) {
+      if (!analysisGuardRef.current.isCurrent(requestToken)) {
+        return;
+      }
       setError(caughtError instanceof Error ? caughtError.message.trim() : "识别失败，请重试。 ");
     } finally {
-      setIsLoading(false);
+      if (analysisGuardRef.current.finish(requestToken)) {
+        setIsLoading(false);
+      }
     }
   }
 
-  function updateItem(index: number, updates: Partial<MealItemAnalysis>): void {
-    setAnalysis((currentAnalysis: MealAnalysis | undefined) => {
+  function updateItem(index: number, updates: EditableNutritionItemUpdates): void {
+    invalidateCalculation();
+    setAnalysis((currentAnalysis: ReviewedMealAnalysis | undefined) => {
       if (!currentAnalysis) {
         return currentAnalysis;
       }
       return {
         ...currentAnalysis,
-        items: currentAnalysis.items.map((item: MealItemAnalysis, itemIndex: number) =>
-          itemIndex === index ? { ...item, ...updates, needs_confirmation: false } : item,
+        items: currentAnalysis.items.map((item: NutritionInputItem, itemIndex: number) =>
+          itemIndex === index ? applyNutritionItemEdit(item, updates) : item,
         ),
       };
     });
+    setError(undefined);
   }
 
-  function removeItem(index: number): void {
-    setAnalysis((currentAnalysis: MealAnalysis | undefined) => {
-      if (!currentAnalysis || currentAnalysis.items.length === 1) {
-        setError("一餐至少保留一个食物。 ");
+  function acknowledgeItem(index: number): void {
+    invalidateCalculation();
+    setAnalysis((currentAnalysis: ReviewedMealAnalysis | undefined) => {
+      if (!currentAnalysis) {
         return currentAnalysis;
       }
       return {
         ...currentAnalysis,
-        items: currentAnalysis.items.filter((_: MealItemAnalysis, itemIndex: number) => itemIndex !== index),
+        items: currentAnalysis.items.map((item: NutritionInputItem, itemIndex: number) =>
+          itemIndex === index ? acknowledgeNutritionItem(item) : item,
+        ),
       };
     });
+    setError(undefined);
+  }
+
+  function removeItem(index: number): void {
+    if (!analysis || analysis.items.length === 1) {
+      setError("一餐至少保留一个食物。 ");
+      return;
+    }
+    invalidateCalculation();
+    setAnalysis((currentAnalysis: ReviewedMealAnalysis | undefined) => {
+      if (!currentAnalysis) {
+        return currentAnalysis;
+      }
+      return {
+        ...currentAnalysis,
+        items: currentAnalysis.items.filter((_: NutritionInputItem, itemIndex: number) => itemIndex !== index),
+      };
+    });
+    setError(undefined);
+  }
+
+  function returnToInput(): void {
+    invalidateCalculation();
+    setStage("input");
+    setError(undefined);
   }
 
   async function calculate(): Promise<void> {
     if (!analysis) {
       return;
     }
+    if (pendingConfirmationCount > 0) {
+      setError(`还有 ${pendingConfirmationCount} 项需要明确确认后才能计算营养。`);
+      return;
+    }
+
+    const requestToken: RequestRevisionToken = calculationGuardRef.current.begin();
+    setNutrition(undefined);
+    setJustSaved(false);
     setIsLoading(true);
     setError(undefined);
     try {
@@ -333,17 +468,26 @@ export function MealWorkbench() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: analysis.items }),
+        signal: requestToken.signal,
       });
       const body: NutritionApiResponse = (await response.json()) as NutritionApiResponse;
+      if (!calculationGuardRef.current.isCurrent(requestToken)) {
+        return;
+      }
       if (!response.ok || !body.nutrition) {
         throw new Error(body.error ?? "没有得到营养计算结果。 ");
       }
       setNutrition(body.nutrition);
       setStage("result");
     } catch (caughtError: unknown) {
+      if (!calculationGuardRef.current.isCurrent(requestToken)) {
+        return;
+      }
       setError(caughtError instanceof Error ? caughtError.message.trim() : "计算失败，请重试。 ");
     } finally {
-      setIsLoading(false);
+      if (calculationGuardRef.current.finish(requestToken)) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -451,7 +595,7 @@ export function MealWorkbench() {
             </div>
 
             <div className="input-mode-tabs" role="group" aria-label="选择输入方式">
-              <button className={inputMode === "text" ? "selected" : ""} type="button" onClick={() => setInputMode("text")}>
+              <button className={inputMode === "text" ? "selected" : ""} type="button" onClick={() => { invalidateAnalysisRequest(); setInputMode("text"); }}>
                 <FileText size={18} />文字
               </button>
               <button className={inputMode === "voice" ? "selected" : ""} type="button" onClick={startVoiceInput}>
@@ -466,8 +610,8 @@ export function MealWorkbench() {
             <textarea
               id="meal-description"
               value={mealText}
-              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setMealText(event.target.value)}
-              placeholder="例如：半碗米饭，番茄炒蛋吃了三分之一盘，排骨四块"
+              onChange={(event: ChangeEvent<HTMLTextAreaElement>) => { invalidateAnalysisRequest(); setMealText(event.target.value); }}
+              placeholder="例如：半碗米饭，番茄炒蛋吃了三分之一盘，红烧排骨四块"
               rows={4}
               maxLength={1000}
             />
@@ -489,7 +633,7 @@ export function MealWorkbench() {
               <div className="image-preview">
                 <Image src={imageDataUrl} alt="待识别的餐食照片" width={112} height={84} unoptimized />
                 <div><strong>{imageName}</strong><span>照片会与文字一起用于识别</span></div>
-                <button className="icon-button" type="button" onClick={() => { setImageDataUrl(undefined); setImageName(undefined); }} aria-label="移除照片">
+                <button className="icon-button" type="button" onClick={() => { invalidateAnalysisRequest(); setImageDataUrl(undefined); setImageName(undefined); }} aria-label="移除照片">
                   <RotateCcw size={18} />
                 </button>
               </div>
@@ -511,12 +655,12 @@ export function MealWorkbench() {
                 <p className="step-kicker">{formatProvider(provider)}</p>
                 <h2 id="workbench-title">确认份量和用油</h2>
               </div>
-              <button className="text-button" type="button" onClick={() => setStage("input")}>返回修改</button>
+              <button className="text-button" type="button" onClick={returnToInput}>返回修改</button>
             </div>
             <p className="uncertainty-copy">{analysis.uncertainty_note}</p>
             {warning ? <InlineMessage tone="warning" message={warning} /> : null}
             <div className="food-list">
-              {analysis.items.map((item: MealItemAnalysis, index: number) => (
+              {analysis.items.map((item: NutritionInputItem, index: number) => (
                 <article className="food-item" key={`${item.food_name}-${index}`}>
                   <div className="food-item-title">
                     <span>{index + 1}</span>
@@ -556,18 +700,46 @@ export function MealWorkbench() {
                       </select>
                     </label>
                   </div>
-                  <p className="assumption"><AlertCircle size={15} />{item.assumptions.join("；")}</p>
+                  {item.assumptions.length > 0 ? (
+                    <p className="assumption"><AlertCircle size={15} />{item.assumptions.join("；")}</p>
+                  ) : null}
+                  {item.edited_fields.length > 0 ? (
+                    <p className="assumption"><Check size={15} />用户已修改：{formatEditedFields(item.edited_fields)}；原识别假设已清除。</p>
+                  ) : null}
                   <div className="confidence-line">
-                    <span>识别把握</span>
+                    <span>原始识别把握</span>
                     <meter min={0} max={1} low={0.55} high={0.8} optimum={1} value={item.confidence} />
                     <strong>{Math.round(item.confidence * 100)}%</strong>
                   </div>
+                  {item.needs_confirmation ? (
+                    item.confirmation_acknowledged ? (
+                      <InlineMessage tone="success" message="这一项已明确确认。再次修改会要求重新确认。" />
+                    ) : (
+                      <>
+                        <InlineMessage tone="warning" message="识别认为这一项存在关键不确定性；必须明确确认后才能计算。" />
+                        <button className="text-button" type="button" onClick={() => acknowledgeItem(index)}>
+                          明确确认此项
+                        </button>
+                      </>
+                    )
+                  ) : null}
                 </article>
               ))}
             </div>
             {error ? <InlineMessage tone="error" message={error} /> : null}
-            <button className="primary-button full-width" type="button" onClick={calculate} disabled={isLoading}>
-              <Check size={19} />{isLoading ? "正在计算…" : "确认并计算营养"}<ChevronRight size={19} />
+            <button
+              className="primary-button full-width"
+              type="button"
+              onClick={calculate}
+              disabled={isLoading || pendingConfirmationCount > 0}
+            >
+              <Check size={19} />
+              {isLoading
+                ? "正在计算…"
+                : pendingConfirmationCount > 0
+                  ? `还有 ${pendingConfirmationCount} 项待明确确认`
+                  : "确认并计算营养"}
+              <ChevronRight size={19} />
             </button>
           </div>
         ) : null}
@@ -594,12 +766,19 @@ export function MealWorkbench() {
             <details className="source-details">
               <summary>查看计算依据</summary>
               <ul>
-                {nutrition.items.map((item, index: number) => (
-                  <li key={`${item.food_name}-${index}`}>
-                    <strong>{item.food_name}</strong>
-                    <span>{item.estimated_grams}g · {item.source_ref}</span>
-                  </li>
-                ))}
+                {nutrition.items.map((item, index: number) => {
+                  const hasReviewChanges: boolean = Object.values(item.field_provenance).some(
+                    (source) => source !== "analysis",
+                  );
+                  return (
+                    <li key={`${item.food_name}-${index}`}>
+                      <strong>{item.food_name} → {item.matched_profile_name}</strong>
+                      <span>
+                        {item.estimated_grams}g · {hasReviewChanges ? "客户端报告含用户修改/审查派生" : "客户端报告识别值未修改"} · {item.source_ref}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </details>
             {justSaved ? <InlineMessage tone="success" message="已经保存到今天的汇总。" /> : null}

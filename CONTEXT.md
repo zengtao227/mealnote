@@ -1,8 +1,8 @@
 # MealNote Project Context
 
-**Last curated:** 2026-08-25  
-**Canonical project name / brand / package / directory:** `MealNote` / `mealnote`  
-**Repository:** `zengtao227/mealnote`  
+**Last curated:** 2026-08-26
+**Canonical project name / brand / package / directory:** `MealNote` / `mealnote`
+**Repository:** `zengtao227/mealnote`
 **Canonical local path:** `/Users/zengtao/Doc/My code/mealnote`
 
 > This file is the durable handoff context for humans and coding agents. It records project intent, current implementation truth, non-negotiable boundaries, known risks and the next approved development direction. When this file conflicts with current code/tests, the current code plus verified evidence wins and this file must be updated.
@@ -57,7 +57,7 @@ Current architecture is a Next.js monolith/PWA. Do not introduce microservices, 
 
 ## 3. Current implementation truth
 
-As of the 2026-08-25 baseline:
+As of 2026-08-26:
 
 ### Working local demo
 
@@ -72,26 +72,48 @@ As of the 2026-08-25 baseline:
 - independent Nutrition Engine;
 - portion/oil editing and kcal range display;
 - `localStorage` meal saving and today's summary;
-- initial Supabase/PostgreSQL migration and RLS policies.
+- Supabase/PostgreSQL schema, RLS, and owner-integrity migration/regression harness.
 
-### Verified baseline quality
+### Verified hardening checkpoints
 
-The bootstrap baseline was manually verified at 375 px for the main local flow and had 7 unit tests. On 2026-08-25, PR #3 upgraded Next.js / eslint-config-next from 16.2.7 to 16.3.3. A clean Linux + Node.js 22 dependency tree passed:
+PR #3 upgraded Next.js / eslint-config-next from 16.2.7 to 16.3.3 and passed clean Linux + Node.js 22 install, lint, typecheck, tests, production build, and `npm audit` with 0 vulnerabilities at that checkpoint. It merged as `ff6d02ec0e6b595dd21a3a2841fe51e365f702cc`.
+
+PR #5 closed S1 database owner-integrity boundaries. It was independently re-reviewed after concurrency and migration-failure fixes, then squash-merged to `main` as `bbb7314970596bd3a753b94ebbdd119ea4027a19`. The database boundary now includes owner-aware meal foreign keys, serialized private catalog ownership checks, privileged-write coverage, and fail-closed migration tests.
+
+PR #6 is the current S2 confirmation + nutrition correctness review candidate. Independent review has produced three valid NO-GO rounds before the current rereview candidate:
+
+- head `575b87bb75cf98af3cfe48f1a183e07f8eb3a435`: stale in-flight calculation responses, heuristic substring-to-canonical promotion, and client-reported provenance described too strongly;
+- head `3e7fcfe2837a22381becf0a0c3b3d89307039866`: candidate classification/suppression was still meal-global per food profile, allowing a trusted mention in one clause to authorize or suppress another clause;
+- head `b471bd62ccf75a3b2a455c65553f1c764dc07831`: clause segmentation itself was still an authority boundary, so user-controlled unenumerated joiners such as `以及 / 与 / 还有` could leave two mentions in one segment and recreate fuzzy-to-canonical promotion.
+
+The current branch addresses all known S2 findings:
+
+- calculation requests use an abortable revision guard; edits, removals, acknowledgement changes, reset, return-to-input and new analysis invalidate the active calculation, and stale responses cannot commit nutrition;
+- exact Nutrition Engine resolution remains unchanged and fail-closed;
+- heuristic candidate construction is now mention-span based rather than meal- or clause-global: every alias occurrence keeps its own start/end span, portion context, trusted/embedded classification and deduplication identity;
+- broad-candidate suppression only applies when that broad occurrence actually overlaps a trusted occurrence, rather than when the same food family appears elsewhere in the meal;
+- compound occurrences such as the `米饭` inside `糯米饭` or `蛋炒米饭` remain unresolved even when a separate plain-rice occurrence is trusted;
+- known joiners are recognized only to preserve normal trusted-mention UX; unknown joiners do not create authority and instead fail closed, so security does not depend on an exhaustive connector list;
+- repeated mentions of the same trusted profile remain separate, e.g. `半碗米饭以及一碗米饭` preserves independent 100 g and 200 g candidates;
+- review provenance, confirmation state and recognition metadata remain explicitly marked `client-reported`; they are not described as verified audit provenance until a future server-side analysis binding exists.
+
+The mention-span rereview-fix content tree was verified on Linux / Node.js 22.23.2 / PostgreSQL 15.19 with:
 
 ```text
-npm ci
+npm ci              # 0 vulnerabilities
 npm run lint
 npm run typecheck
-npm test          # 7/7
+npm test             # 10 files / 55 tests
 npm run build
-npm audit         # 0 vulnerabilities at that checkpoint
+bash scripts/test-db-owner-integrity.sh
+git diff --check origin/main...HEAD
 ```
 
-PR #3 was independently reviewed and approved, then merged to `main` as commit `ff6d02ec0e6b595dd21a3a2841fe51e365f702cc`.
+All passed. New mention-span coverage includes `以及 / 与 / 还有` in both orders, both `糯米饭` and `蛋炒米饭`, broad/trusted ribs without punctuation segmentation, and repeated trusted rice mentions with independent portions. S2 is still not considered merged or approved until independent rereview approves PR #6.
 
 ### Not production-ready yet
 
-The project has **not** yet completed real Supabase Auth/PostgreSQL integration or real OpenAI multimodal quality validation. A real OpenAI key should not be deployed to a public environment yet.
+The project has **not** yet completed real Supabase Auth/PostgreSQL application integration or real OpenAI multimodal quality validation. A real OpenAI key should not be deployed to a public environment yet.
 
 ## 4. Current code map
 
@@ -123,49 +145,44 @@ src/lib/http/validate-image-data-url.ts
 
 src/lib/nutrition/engine.ts
 src/lib/nutrition/food-database.ts
+src/lib/nutrition/request-guard.ts
+src/lib/nutrition/review.ts
 
 supabase/migrations/0001_initial.sql
+supabase/migrations/0002_owner_integrity.sql
 ```
 
 Use the current repository tree rather than this list if files move later.
 
-## 5. Known findings from the first independent audit
+## 5. Independent-audit findings and current status
 
-These are the important unresolved findings, ordered roughly by production risk.
+### A. Cross-table owner integrity — CLOSED in S1
 
-### A. Cross-table owner integrity is incomplete
+PR #5 binds meal relationships to owner-aware foreign keys and enforces private food/recipe ownership at the database boundary. Sequential, privileged/RLS-bypass, concurrent, and failed-migration regression tests passed on PostgreSQL 15.19.
 
-Current RLS checks row-level `owner_id`, but a row can still potentially reference another user's object if the foreign key relationship itself is not owner-bound. The audit specifically identified:
-
-- `meal_items → meals`;
-- `ai_analysis_runs → meals`;
-- also review `meal_items.food_id` and `meal_items.recipe_id` so private rows cannot cross owners while intended system rows remain usable.
-
-This is the **next development slice**.
-
-### B. Real OpenAI would currently be an unauthenticated paid endpoint
+### B. Real OpenAI would currently be an unauthenticated paid endpoint — OPEN
 
 `/api/analyze` calls OpenAI whenever `OPENAI_API_KEY` exists. Until real Auth and per-user usage protection exist, a real key must not be deployed to a public environment.
 
-### C. Image validation is not full image validation
+### C. Image validation is not full image validation — OPEN
 
 Current code validates request body size, data URL format, decoded size and basic JPEG/PNG/WebP signatures. Magic bytes alone do not prove that a file is complete or decodable. Truncated/malformed image tests and structural/decode validation are still needed.
 
-### D. Generic nutrition fallback is too permissive
+### D. Generic nutrition fallback is too permissive — ADDRESSED in S2 candidate
 
-Unknown food names currently fall back to a generic home-cooking profile around 150 kcal/100g and can continue through the save flow. Production behavior should instead surface explicit missing-data/low-confidence state or require a user choice.
+PR #6 removes generic nutrition authority. Unknown or ambiguous names do not manufacture a nutrition result; they fail closed until the user supplies an explicit supported food/recipe.
 
-### E. Food matching can over-authorize a fuzzy match
+### E. Food matching can over-authorize or suppress fuzzy candidates — ADDRESSED in current S2 candidate, pending rereview
 
-The current food database lookup uses substring-style alias matching. This can cause a different dish containing an alias to inherit the wrong nutrition profile. Fuzzy understanding belongs in the analyzer/resolver; a trusted nutrition profile should require an explicit canonical/alias resolution result.
+The Nutrition Engine resolver only accepts normalized exact canonical-name / curated exact-alias matches. The heuristic producer now binds candidate authority to individual mention spans rather than whole meals or enumerated clauses. A trusted occurrence can only suppress an overlapping broad occurrence; it cannot authorize, rebind or remove another occurrence elsewhere in the text. Unknown segmentation fails closed. Regression coverage includes all `以及 / 与 / 还有 × 糯米饭 / 蛋炒米饭 × both orders`, broad/trusted ribs, and repeated trusted rice mentions.
 
-### F. Confirmation/provenance is incomplete
+### F. Confirmation/provenance/stale result boundary — ADDRESSED in S2 candidate, pending rereview
 
-`needs_confirmation` exists in the schema, but it is not yet a hard domain/UI gate. User edits can clear confirmation without preserving complete provenance, and assumptions/confidence can become stale after edits.
+PR #6 uses a separate review state and explicit acknowledgement gate. User edits clear stale assumptions and invalidate confirmation when required. In-flight calculation results are revision-bound and abortable, so an edit/remove/reset/new analysis invalidates the request before the response can become current nutrition. Because the calculation endpoint has no server-verifiable original analysis binding yet, field provenance, confirmation state and recognition source/confidence are explicitly labeled `client-reported`, not verified audit provenance.
 
-### G. Local persistence needs resilience/versioning
+### G. Local persistence needs resilience/versioning — OPEN
 
-`localStorage.setItem()` errors are not yet surfaced to the user, and stored arrays are not runtime-validated/versioned. This is acceptable for the demo, not for a production-quality fallback/local cache.
+`localStorage.setItem()` errors are not yet surfaced to the user, and stored arrays are not runtime-validated/versioned. This remains S3 work.
 
 ## 6. Approved immediate development order
 
@@ -174,11 +191,11 @@ The detailed plan lives in `docs/DEVELOPMENT_PLAN.md`. The current order is:
 ```text
 S0  dependency security baseline          DONE
  ↓
-S1  database authority / owner integrity  NEXT
+S1  database authority / owner integrity  DONE
  ↓
-S2  confirmation + nutrition correctness
+S2  confirmation + nutrition correctness  REREVIEW (PR #6)
  ↓
-S3  image + local persistence hardening
+S3  image + local persistence hardening   NEXT after S2 approval/merge
  ↓
 S4  Supabase Auth + PostgreSQL adapter
  ↓
@@ -187,16 +204,30 @@ S5  real OpenAI quality slice
 M5  real-user validation / V1 release gate
 ```
 
-### S1 scope guard
+### Current S2 scope guard
 
-The next implementation PR should stay narrowly scoped to database authority/integrity:
+PR #6 must stay limited to confirmation and nutrition correctness:
 
-- define allowed owner relationships for each relevant FK;
-- enforce them at the database boundary;
-- add two-user adversarial tests;
-- keep current demo/API/UI behavior unchanged.
+- unknown/broad/compound candidates cannot become hidden nutrition authority;
+- trusted profile resolution is exact canonical/curated alias only;
+- heuristic candidate authority, suppression and deduplication must be bound to individual mention spans rather than meal-global or clause-global state;
+- one trusted mention cannot canonicalize, rebind or suppress a non-overlapping compound/broad mention;
+- unknown segmentation must fail closed rather than depend on an exhaustive connector list;
+- `needs_confirmation` is a real UI/domain/API gate;
+- in-flight calculation responses cannot outlive the review revision they were calculated from;
+- user edits clear stale assumptions; provenance/recognition metadata are explicitly client-reported until server-verifiable binding exists;
+- representative and adversarial regression tests prove deterministic and fail-closed behavior.
 
-Do **not** mix Supabase login UI, real OpenAI calls, nutrition redesign or new product features into that PR.
+Do **not** mix Supabase Auth, real OpenAI deployment, image decode hardening, localStorage resilience/versioning, database-schema redesign, or product expansion into S2.
+
+### S3 scope after S2 merge
+
+The next implementation slice should only address input/local persistence hardening:
+
+- structural/decode validation for JPEG/PNG/WebP, including malformed/truncated fixtures;
+- retain the real streamed request-body byte limit;
+- add minimal localStorage schema/version runtime validation;
+- surface local save failures while preserving the current draft for retry.
 
 ## 7. Review and development conventions
 
@@ -218,7 +249,9 @@ npm run build
 5. dependency changes also run `npm audit`;
 6. database changes require owner/RLS/integrity regression tests;
 7. input-boundary changes require adversarial malformed-input tests;
-8. do not mark a checklist item PASS because the design intends it—PASS needs executable evidence.
+8. async state changes require stale-response/deferred-result tests when a network response can overwrite mutable user state;
+9. candidate/authority work must test upstream producer + downstream resolver together, including repeated mentions, unsplit joiners, both ordering directions and unknown-segmentation fail-closed behavior;
+10. do not mark a checklist item PASS because the design intends it—PASS needs executable evidence.
 
 ## 8. Product non-goals for V1
 
@@ -246,4 +279,4 @@ A new developer or agent should read, in this order:
 4. `docs/DEVELOPMENT_PLAN.md` — current implementation sequence;
 5. the current branch diff and tests — actual source of truth for the task at hand.
 
-If the repository has materially changed since this file's last curated date, update this context as part of the next planning/documentation pass.
+If PR #6 has since been approved/merged, update S2 to DONE and make S3 the sole next implementation priority before beginning new work.

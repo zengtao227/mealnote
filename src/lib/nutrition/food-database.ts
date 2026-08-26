@@ -10,6 +10,7 @@ export interface PortionBasis {
 
 export interface FoodProfile {
   canonical_name: string;
+  /** Exact synonyms only. Do not use parent categories or recipe variants as aliases. */
   aliases: string[];
   kind: FoodKind;
   kcal_per_100g: number;
@@ -17,16 +18,37 @@ export interface FoodProfile {
   fat_per_100g: number;
   carbs_per_100g: number;
   uncertainty_ratio: number;
-  source_type: "trusted-table" | "standard-recipe" | "demo-fallback";
+  source_type: "trusted-table" | "standard-recipe";
   source_ref: string;
   default_grams: number;
   portion_basis: PortionBasis;
 }
 
+export interface MatchedFoodProfileResolution {
+  status: "matched";
+  profile: FoodProfile;
+  matched_name: string;
+  matched_by: "canonical_name" | "alias";
+}
+
+export interface UnmatchedFoodProfileResolution {
+  status: "unmatched";
+}
+
+export interface AmbiguousFoodProfileResolution {
+  status: "ambiguous";
+  candidates: string[];
+}
+
+export type FoodProfileResolution =
+  | MatchedFoodProfileResolution
+  | UnmatchedFoodProfileResolution
+  | AmbiguousFoodProfileResolution;
+
 export const FOOD_PROFILES: FoodProfile[] = [
   {
     canonical_name: "米饭",
-    aliases: ["白米饭", "米饭"],
+    aliases: ["白米饭"],
     kind: "food",
     kcal_per_100g: 116,
     protein_per_100g: 2.6,
@@ -40,7 +62,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
   {
     canonical_name: "番茄炒蛋",
-    aliases: ["西红柿炒鸡蛋", "番茄炒鸡蛋", "番茄炒蛋"],
+    aliases: ["西红柿炒鸡蛋", "番茄炒鸡蛋"],
     kind: "recipe",
     kcal_per_100g: 120,
     protein_per_100g: 5.2,
@@ -54,7 +76,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
   {
     canonical_name: "红烧排骨",
-    aliases: ["排骨", "红烧排骨"],
+    aliases: [],
     kind: "recipe",
     kcal_per_100g: 260,
     protein_per_100g: 18,
@@ -68,7 +90,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
   {
     canonical_name: "冬瓜汤",
-    aliases: ["冬瓜汤"],
+    aliases: [],
     kind: "recipe",
     kcal_per_100g: 20,
     protein_per_100g: 1,
@@ -82,7 +104,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
   {
     canonical_name: "饺子",
-    aliases: ["水饺", "饺子"],
+    aliases: ["水饺"],
     kind: "food",
     kcal_per_100g: 210,
     protein_per_100g: 9,
@@ -96,7 +118,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
   {
     canonical_name: "汤面",
-    aliases: ["牛肉面", "汤面", "面条"],
+    aliases: [],
     kind: "recipe",
     kcal_per_100g: 105,
     protein_per_100g: 4.5,
@@ -110,7 +132,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
   {
     canonical_name: "宫保鸡丁",
-    aliases: ["宫保鸡丁"],
+    aliases: [],
     kind: "recipe",
     kcal_per_100g: 180,
     protein_per_100g: 12,
@@ -124,28 +146,52 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
 ];
 
-export const GENERIC_RECIPE_PROFILE: FoodProfile = {
-  canonical_name: "通用家常菜估算",
-  aliases: [],
-  kind: "recipe",
-  kcal_per_100g: 150,
-  protein_per_100g: 8,
-  fat_per_100g: 9,
-  carbs_per_100g: 10,
-  uncertainty_ratio: 0.4,
-  source_type: "demo-fallback",
-  source_ref: "仅用于 V1 演示；保存前应替换为真实食物或菜谱",
-  default_grams: 150,
-  portion_basis: { plate_grams: 350, spoon_grams: 25, bite_grams: 20 },
-};
+function normalizeFoodName(foodName: string): string {
+  return foodName.normalize("NFKC").trim().toLowerCase();
+}
 
-export function findFoodProfile(foodName: string): FoodProfile {
-  const normalizedName: string = foodName.trim().toLowerCase();
-  return (
-    FOOD_PROFILES.find((profile: FoodProfile) =>
-      [profile.canonical_name, ...profile.aliases].some((alias: string) =>
-        normalizedName.includes(alias.toLowerCase()),
+export function resolveFoodProfile(foodName: string): FoodProfileResolution {
+  const normalizedName: string = normalizeFoodName(foodName);
+  if (!normalizedName) {
+    return { status: "unmatched" };
+  }
+
+  const matches: MatchedFoodProfileResolution[] = [];
+  for (const profile of FOOD_PROFILES) {
+    if (normalizeFoodName(profile.canonical_name) === normalizedName) {
+      matches.push({
+        status: "matched",
+        profile,
+        matched_name: profile.canonical_name,
+        matched_by: "canonical_name",
+      });
+      continue;
+    }
+
+    const matchedAlias: string | undefined = profile.aliases.find(
+      (alias: string) => normalizeFoodName(alias) === normalizedName,
+    );
+    if (matchedAlias) {
+      matches.push({
+        status: "matched",
+        profile,
+        matched_name: matchedAlias,
+        matched_by: "alias",
+      });
+    }
+  }
+
+  if (matches.length === 0) {
+    return { status: "unmatched" };
+  }
+  if (matches.length > 1) {
+    return {
+      status: "ambiguous",
+      candidates: matches.map(
+        (match: MatchedFoodProfileResolution) => match.profile.canonical_name,
       ),
-    ) ?? GENERIC_RECIPE_PROFILE
-  );
+    };
+  }
+
+  return matches[0];
 }

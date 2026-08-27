@@ -1,6 +1,6 @@
 # MealNote Project Context
 
-**Last curated:** 2026-08-26
+**Last curated:** 2026-08-27
 **Canonical project name / brand / package / directory:** `MealNote` / `mealnote`
 **Repository:** `zengtao227/mealnote`
 **Canonical local path:** `/Users/zengtao/Doc/My code/mealnote`
@@ -80,13 +80,13 @@ PR #3 upgraded Next.js / eslint-config-next from 16.2.7 to 16.3.3 and passed cle
 
 PR #5 closed S1 database owner-integrity boundaries. It was independently re-reviewed after concurrency and migration-failure fixes, then squash-merged to `main` as `bbb7314970596bd3a753b94ebbdd119ea4027a19`. The database boundary now includes owner-aware meal foreign keys, serialized private catalog ownership checks, privileged-write coverage, and fail-closed migration tests.
 
-PR #6 is the current S2 confirmation + nutrition correctness review candidate. Independent review has produced three valid NO-GO rounds before the current rereview candidate:
+PR #6 completed S2 confirmation + nutrition correctness hardening and merged to `main` as `5c0fb4b70d0a16c29a2e182c995f4eb5582bea82`. During independent review it went through three valid NO-GO rounds before approval and merge:
 
 - head `575b87bb75cf98af3cfe48f1a183e07f8eb3a435`: stale in-flight calculation responses, heuristic substring-to-canonical promotion, and client-reported provenance described too strongly;
 - head `3e7fcfe2837a22381becf0a0c3b3d89307039866`: candidate classification/suppression was still meal-global per food profile, allowing a trusted mention in one clause to authorize or suppress another clause;
 - head `b471bd62ccf75a3b2a455c65553f1c764dc07831`: clause segmentation itself was still an authority boundary, so user-controlled unenumerated joiners such as `以及 / 与 / 还有` could leave two mentions in one segment and recreate fuzzy-to-canonical promotion.
 
-The current branch addresses all known S2 findings:
+The merged S2 baseline addresses all known S2 findings:
 
 - calculation requests use an abortable revision guard; edits, removals, acknowledgement changes, reset, return-to-input and new analysis invalidate the active calculation, and stale responses cannot commit nutrition;
 - exact Nutrition Engine resolution remains unchanged and fail-closed;
@@ -109,7 +109,7 @@ bash scripts/test-db-owner-integrity.sh
 git diff --check origin/main...HEAD
 ```
 
-All passed. New mention-span coverage includes `以及 / 与 / 还有` in both orders, both `糯米饭` and `蛋炒米饭`, broad/trusted ribs without punctuation segmentation, and repeated trusted rice mentions with independent portions. S2 is still not considered merged or approved until independent rereview approves PR #6.
+All passed. New mention-span coverage includes `以及 / 与 / 还有` in both orders, both `糯米饭` and `蛋炒米饭`, broad/trusted ribs without punctuation segmentation, and repeated trusted rice mentions with independent portions. Independent rereview approved the final S2 candidate, and PR #6 is now merged into the exact S3 base `5c0fb4b70d0a16c29a2e182c995f4eb5582bea82`.
 
 ### Not production-ready yet
 
@@ -164,25 +164,27 @@ PR #5 binds meal relationships to owner-aware foreign keys and enforces private 
 
 `/api/analyze` calls OpenAI whenever `OPENAI_API_KEY` exists. Until real Auth and per-user usage protection exist, a real key must not be deployed to a public environment.
 
-### C. Image validation is not full image validation — OPEN
+### C. Image validation is not full image validation — ADDRESSED in S3 candidate, pending independent review
 
-Current code validates request body size, data URL format, decoded size and basic JPEG/PNG/WebP signatures. Magic bytes alone do not prove that a file is complete or decodable. Truncated/malformed image tests and structural/decode validation are still needed.
+The S3 candidate retains the streamed request-body limit, data URL/type checks and 5 MiB encoded-image byte cap, and pins the direct decoder dependency at `sharp 0.35.4`. Both metadata inspection and raw decode use the same untrusted-input options: `failOn: "warning"`, a 16 MP `limitInputPixels`, a 4-channel `limitInputChannels`, `unlimited: false`, and a 3-second libvips processing timeout. V1 rejects any `pages !== 1` before a provider can run, so valid animation and malformed later frames cannot pass through a first-frame-only decode. JPEG/PNG/WebP must survive a bounded full single-frame decode, and MIME/signature/decoded format must agree.
 
-### D. Generic nutrition fallback is too permissive — ADDRESSED in S2 candidate
+The 16 MP / 4-channel / 3-second values are an S3 application-level resource budget, not proof that a public image endpoint is fully DoS-hardened. They close the reproduced 36 MP single-request amplification and later-frame bypass, but `sharp.timeout()` starts only after libvips opens the input and does not bound thread-queue delay or total request lifetime. Outer request deadlines plus deployment-level concurrency, CPU and memory controls remain required before public OpenAI deployment.
+
+### D. Generic nutrition fallback is too permissive — CLOSED in S2
 
 PR #6 removes generic nutrition authority. Unknown or ambiguous names do not manufacture a nutrition result; they fail closed until the user supplies an explicit supported food/recipe.
 
-### E. Food matching can over-authorize or suppress fuzzy candidates — ADDRESSED in current S2 candidate, pending rereview
+### E. Food matching can over-authorize or suppress fuzzy candidates — CLOSED in S2
 
 The Nutrition Engine resolver only accepts normalized exact canonical-name / curated exact-alias matches. The heuristic producer now binds candidate authority to individual mention spans rather than whole meals or enumerated clauses. A trusted occurrence can only suppress an overlapping broad occurrence; it cannot authorize, rebind or remove another occurrence elsewhere in the text. Unknown segmentation fails closed. Regression coverage includes all `以及 / 与 / 还有 × 糯米饭 / 蛋炒米饭 × both orders`, broad/trusted ribs, and repeated trusted rice mentions.
 
-### F. Confirmation/provenance/stale result boundary — ADDRESSED in S2 candidate, pending rereview
+### F. Confirmation/provenance/stale result boundary — CLOSED in S2
 
 PR #6 uses a separate review state and explicit acknowledgement gate. User edits clear stale assumptions and invalidate confirmation when required. In-flight calculation results are revision-bound and abortable, so an edit/remove/reset/new analysis invalidates the request before the response can become current nutrition. Because the calculation endpoint has no server-verifiable original analysis binding yet, field provenance, confirmation state and recognition source/confidence are explicitly labeled `client-reported`, not verified audit provenance.
 
-### G. Local persistence needs resilience/versioning — OPEN
+### G. Local persistence needs resilience/versioning — ADDRESSED in S3 candidate, pending independent review
 
-`localStorage.setItem()` errors are not yet surfaced to the user, and stored arrays are not runtime-validated/versioned. This remains S3 work.
+The S3 candidate stores meals in a strict V1 `{ schema_version, meals }` envelope and validates the full saved nutrition snapshot at runtime. Valid base-version raw arrays are accepted only after the same strict `SavedMeal` validation and are lazily migrated to the V1 envelope on the next successful save. Invalid legacy arrays, invalid JSON, invalid fields/dates/nutrition, unknown versions and storage read/write exceptions fail closed. A failed save leaves the current result/draft and summary unchanged and remains retryable.
 
 ## 6. Approved immediate development order
 
@@ -193,9 +195,9 @@ S0  dependency security baseline          DONE
  ↓
 S1  database authority / owner integrity  DONE
  ↓
-S2  confirmation + nutrition correctness  REREVIEW (PR #6)
+S2  confirmation + nutrition correctness  DONE (merged PR #6)
  ↓
-S3  image + local persistence hardening   NEXT after S2 approval/merge
+S3  image + local persistence hardening   REVIEW (current candidate)
  ↓
 S4  Supabase Auth + PostgreSQL adapter
  ↓
@@ -220,13 +222,13 @@ PR #6 must stay limited to confirmation and nutrition correctness:
 
 Do **not** mix Supabase Auth, real OpenAI deployment, image decode hardening, localStorage resilience/versioning, database-schema redesign, or product expansion into S2.
 
-### S3 scope after S2 merge
+### Current S3 scope
 
-The next implementation slice should only address input/local persistence hardening:
+The current S3 review candidate is limited to input/local persistence hardening:
 
-- structural/decode validation for JPEG/PNG/WebP, including malformed/truncated fixtures;
+- bounded single-frame structural/decode validation for JPEG/PNG/WebP, including malformed/truncated/corrupt-later-frame and high-pixel fixtures;
 - retain the real streamed request-body byte limit;
-- add minimal localStorage schema/version runtime validation;
+- add minimal localStorage schema/version runtime validation plus strict compatibility for the previous raw-array format;
 - surface local save failures while preserving the current draft for retry.
 
 ## 7. Review and development conventions

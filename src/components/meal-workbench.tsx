@@ -29,6 +29,15 @@ import {
   type EditableNutritionItemUpdates,
   type NutritionInputItem,
 } from "@/lib/nutrition/review";
+import {
+  localPersistenceErrorMessage,
+  readLocalProfileName,
+  readSavedMeals,
+  removeLocalProfileName,
+  writeLocalProfileName,
+  writeSavedMeals,
+  type SavedMeal,
+} from "@/lib/storage/local-meal-storage";
 
 type WorkbenchStage = "input" | "confirm" | "result";
 type InputMode = "text" | "voice" | "image";
@@ -44,13 +53,6 @@ interface AnalysisApiResponse {
 interface NutritionApiResponse {
   nutrition?: NutritionResult;
   error?: string;
-}
-
-interface SavedMeal {
-  id: string;
-  created_at: string;
-  input_text: string;
-  nutrition: NutritionResult;
 }
 
 interface SpeechResultEvent {
@@ -72,8 +74,6 @@ interface SpeechRecognitionConstructor {
   new (): SpeechRecognitionLike;
 }
 
-const PROFILE_KEY: string = "mealnote-demo-profile";
-const MEALS_KEY_PREFIX: string = "mealnote-demo-meals";
 const MAX_IMAGE_BYTES: number = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES: string[] = ["image/jpeg", "image/png", "image/webp"];
 
@@ -90,23 +90,6 @@ const EDITED_FIELD_LABELS: Record<EditableNutritionField, string> = {
   estimated_grams: "估计重量",
   oil_level: "用油",
 };
-
-function mealsKeyForProfile(profileName: string): string {
-  return `${MEALS_KEY_PREFIX}:${encodeURIComponent(profileName)}`;
-}
-
-function readSavedMeals(profileName: string): SavedMeal[] {
-  const storedMeals: string | null = window.localStorage.getItem(mealsKeyForProfile(profileName));
-  if (!storedMeals) {
-    return [];
-  }
-  try {
-    const parsedMeals: unknown = JSON.parse(storedMeals);
-    return Array.isArray(parsedMeals) ? (parsedMeals as SavedMeal[]) : [];
-  } catch {
-    return [];
-  }
-}
 
 function deriveSource(mode: InputMode, hasImage: boolean): InputSource {
   if (hasImage && mode !== "image") {
@@ -153,9 +136,26 @@ export function MealWorkbench() {
 
   useEffect(() => {
     const loadStoredData = (): void => {
-      const storedProfile: string | null = window.localStorage.getItem(PROFILE_KEY);
-      setProfileName(storedProfile);
-      setSavedMeals(storedProfile ? readSavedMeals(storedProfile) : []);
+      let storedProfile: string | null = null;
+      try {
+        storedProfile = readLocalProfileName(window.localStorage);
+        setProfileName(storedProfile);
+      } catch (storageError: unknown) {
+        setProfileName(null);
+        setSavedMeals([]);
+        setError(localPersistenceErrorMessage(storageError));
+        setHydrated(true);
+        return;
+      }
+
+      if (storedProfile) {
+        try {
+          setSavedMeals(readSavedMeals(window.localStorage, storedProfile));
+        } catch (storageError: unknown) {
+          setSavedMeals([]);
+          setError(localPersistenceErrorMessage(storageError));
+        }
+      }
       setHydrated(true);
     };
     const timeoutId: number = window.setTimeout(loadStoredData, 0);
@@ -209,14 +209,30 @@ export function MealWorkbench() {
       setError("请输入一个本地演示昵称。 ");
       return;
     }
-    window.localStorage.setItem(PROFILE_KEY, normalizedName);
+    try {
+      writeLocalProfileName(window.localStorage, normalizedName);
+    } catch (storageError: unknown) {
+      setError(localPersistenceErrorMessage(storageError));
+      return;
+    }
+
     setProfileName(normalizedName);
-    setSavedMeals(readSavedMeals(normalizedName));
-    setError(undefined);
+    try {
+      setSavedMeals(readSavedMeals(window.localStorage, normalizedName));
+      setError(undefined);
+    } catch (storageError: unknown) {
+      setSavedMeals([]);
+      setError(localPersistenceErrorMessage(storageError));
+    }
   }
 
   function signOut(): void {
-    window.localStorage.removeItem(PROFILE_KEY);
+    try {
+      removeLocalProfileName(window.localStorage);
+    } catch (storageError: unknown) {
+      setError(localPersistenceErrorMessage(storageError));
+      return;
+    }
     setProfileName(null);
     setLoginName("");
     setSavedMeals([]);
@@ -501,10 +517,17 @@ export function MealWorkbench() {
       input_text: mealText,
       nutrition,
     };
-    const nextMeals: SavedMeal[] = [savedMeal, ...savedMeals];
-    window.localStorage.setItem(mealsKeyForProfile(profileName), JSON.stringify(nextMeals));
-    setSavedMeals(nextMeals);
-    setJustSaved(true);
+    try {
+      const currentStoredMeals: SavedMeal[] = readSavedMeals(window.localStorage, profileName);
+      const nextMeals: SavedMeal[] = [savedMeal, ...currentStoredMeals];
+      writeSavedMeals(window.localStorage, profileName, nextMeals);
+      setSavedMeals(nextMeals);
+      setJustSaved(true);
+      setError(undefined);
+    } catch (storageError: unknown) {
+      setJustSaved(false);
+      setError(localPersistenceErrorMessage(storageError));
+    }
   }
 
   if (!hydrated) {
@@ -781,6 +804,7 @@ export function MealWorkbench() {
                 })}
               </ul>
             </details>
+            {error ? <InlineMessage tone="error" message={error} /> : null}
             {justSaved ? <InlineMessage tone="success" message="已经保存到今天的汇总。" /> : null}
             <div className="result-actions">
               <button className="primary-button" type="button" onClick={saveMeal} disabled={justSaved}>

@@ -1,10 +1,17 @@
+export class RequestBodyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RequestBodyError";
+  }
+}
+
 export async function readJsonBody(request: Request, maxBytes: number): Promise<unknown> {
   const contentLength: string | null = request.headers.get("content-length");
   if (contentLength !== null && Number(contentLength) > maxBytes) {
-    throw new Error("请求内容超过允许大小。 ");
+    throw new RequestBodyError("请求内容超过允许大小。 ");
   }
   if (!request.body) {
-    throw new Error("请求内容为空。 ");
+    throw new RequestBodyError("请求内容为空。 ");
   }
 
   const reader: ReadableStreamDefaultReader<Uint8Array> = request.body.getReader();
@@ -19,7 +26,7 @@ export async function readJsonBody(request: Request, maxBytes: number): Promise<
     receivedBytes += value.byteLength;
     if (receivedBytes > maxBytes) {
       await reader.cancel();
-      throw new Error("请求内容超过允许大小。 ");
+      throw new RequestBodyError("请求内容超过允许大小。 ");
     }
     chunks.push(value);
   }
@@ -32,5 +39,9 @@ export async function readJsonBody(request: Request, maxBytes: number): Promise<
   }
 
   const bodyText: string = new TextDecoder().decode(bodyBytes);
-  return JSON.parse(bodyText) as unknown;
+  try {
+    return JSON.parse(bodyText) as unknown;
+  } catch {
+    throw new RequestBodyError("请求 JSON 格式不正确。 ");
+  }
 }

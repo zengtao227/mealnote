@@ -1,8 +1,8 @@
 # MealNote 开发计划
 
 **目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。
-**当前阶段：** S1 已完成并合并；S2 已修复三轮独立审查 findings，等待 PR #6 再复审；S3 尚未开始。
-**最后复核：** 2026-08-26
+**当前阶段：** S0、S1、S2 已完成并合并；S3 已完成实现与验证候选，等待独立 PR 审查；S4/S5 尚未开始。
+**最后复核：** 2026-08-27
 **工作方式：** 垂直切片、每步可运行、每个不确定性都保留回退；不为了“生产感”提前引入复杂基础设施。
 
 ## 1. 交付原则
@@ -27,24 +27,28 @@
 - S1 已在 PR #5 闭合跨表 owner integrity，并在 PostgreSQL 15.19 上通过顺序、特权/RLS-bypass、并发和失败迁移回滚测试；PR #5 已合并到 `main` commit `bbb7314970596bd3a753b94ebbdd119ea4027a19`；
 - S2 PR #6 首轮独立审查在 head `575b87bb75cf98af3cfe48f1a183e07f8eb3a435` 找到 2 个 P1 和 1 个 P2：在途计算旧响应覆盖新编辑、heuristic substring 把复合名称升级成可信 canonical、direct API provenance 被描述得比实际可验证性更强；这些 finding 已修复；
 - 第二轮独立复审在 head `3e7fcfe2837a22381becf0a0c3b3d89307039866` 找到 1 个 P1：heuristic 仍以整餐/food profile 为粒度分类和抑制 candidate，导致一个分句中的 trusted `米饭`/`红烧排骨` 可以错误授权、重绑或吞掉另一个分句里的 compound/broad candidate；
-- 第三轮独立复审在 head `b471bd62ccf75a3b2a455c65553f1c764dc07831` 找到 1 个 P1：clause segmentation 本身仍被当成 authority 边界，未枚举连接词 `以及 / 与 / 还有` 可把两个 food mention 留在同一 segment，再次触发 compound → trusted canonical 和份量错绑；当前 candidate 已改成 mention-span authority construction；
-- mention-span S2 内容树已在 Linux / Node.js 22.23.2 / PostgreSQL 15.19 上通过 `npm ci`（0 vulnerabilities）、lint、typecheck、10 files / 55 tests、production build、S1 数据库全套回归和完整 diff whitespace check；最终仍需 Codex 新 exact-range 复审 APPROVE 后才能合并。
+- 第三轮独立复审在 head `b471bd62ccf75a3b2a455c65553f1c764dc07831` 找到 1 个 P1：clause segmentation 本身仍被当成 authority 边界，未枚举连接词 `以及 / 与 / 还有` 可把两个 food mention 留在同一 segment，再次触发 compound → trusted canonical 和份量错绑；最终 S2 implementation 已改成 mention-span authority construction；
+- mention-span S2 内容树在 Linux / Node.js 22.23.2 / PostgreSQL 15.19 上通过 `npm ci`（0 vulnerabilities）、lint、typecheck、10 files / 55 tests、production build、S1 数据库全套回归和完整 diff whitespace check；随后独立 exact-range 复审 APPROVE，PR #6 已合并为 `5c0fb4b70d0a16c29a2e182c995f4eb5582bea82`。
 
 ### 2.2 2026-08-26 当前生产化结论
 
 - **本地 V1 demo：GO。**
 - **数据库 owner-integrity 基础：GO。** S1 已完成并合并。
-- **S2 confirmation + nutrition correctness：三轮 NO-GO findings 已修复，等待 PR #6 再复审。**
+- **S2 confirmation + nutrition correctness：GO。** PR #6 已独立复审通过并合并。
 - **真实 Supabase + OpenAI 用户环境：仍为 NO-GO。**
 
 当前剩余 pre-cloud 关键边界主要是：
 
 1. 一旦服务器配置真实 `OPENAI_API_KEY`，当前 `/api/analyze` 尚无真实用户鉴权、per-user rate limit 或成本保护；
-2. 图片校验目前主要依赖 MIME/data URL、大小和 magic bytes，不能证明图片完整、可解码；
-3. `localStorage` 保存失败没有错误回退，保存对象也没有 schema/version 校验；
-4. S2 当前 candidate 虽已闭合已知 confirmation/nutrition correctness findings，但在 PR #6 独立复审 APPROVE 前不能视为已合并基线。
+2. S3 已实现图片完整解码校验和本地持久化 fail-closed/versioning，但在独立 PR 审查 APPROVE 前仍是 review candidate，不能视为已合并基线。
 
-这些问题应继续按下面的最小切片修复，不需要重写应用。
+这些边界继续按最小切片推进，不需要重写应用。
+
+### 2.3 S3 image/persistence review-candidate boundary
+
+S3 remains a review candidate until PR #7 receives a fresh exact-range approval. The image boundary now pins `sharp 0.35.4`, rejects all multi-frame input, and applies the same `failOn: "warning"`, 16 MP pixel, 4-channel, `unlimited: false`, and 3-second processing timeout controls to metadata inspection and raw decode. These limits are deliberately treated as an application-level budget only: they close the reproduced later-frame bypass and 36 MP decode amplification, but do not replace an outer request deadline or deployment-level concurrency/CPU/memory controls. A real public OpenAI endpoint remains NO-GO until those later deployment protections and Auth/cost controls are reviewed in their own stage.
+
+Local persistence accepts the previous raw `SavedMeal[]` format only after strict runtime validation. A successful subsequent save writes the V1 `{ schema_version: 1, meals }` envelope; failed writes leave the old bytes and current meal state untouched. Malformed legacy data and unknown versions remain fail-closed.
 
 ## 3. 里程碑与验收
 
@@ -60,10 +64,10 @@
 - [x] 本地 Nutrition Engine 计算 kcal、蛋白质、脂肪、碳水与范围；
 - [x] `localStorage` 正常路径保存餐食并生成今日汇总；
 - [x] `npm install` / `npm run dev` 运行方法写入 README；
-- [ ] 对 `localStorage` quota/security 等保存失败提供用户可理解的回退；
-- [x] 低置信/关键缺失项进入真实“必须确认”状态；UI 与 Nutrition Engine/API 均会阻止未确认项继续计算（S2 PR #6，待独立复审）。
+- [x] S3 对 `localStorage` quota/security 等读写失败提供用户可理解的错误，保存失败时保留当前结果且不污染今日汇总；
+- [x] 低置信/关键缺失项进入真实“必须确认”状态；UI 与 Nutrition Engine/API 均会阻止未确认项继续计算（S2 PR #6，已合并）。
 
-**验收证据：** 浏览器主流程可完成一餐；刷新后本地记录仍在；无云凭据时不调用网络 AI。保存失败回退留给 S3；确认边界及 stale calculation freshness 已有自动化回归，最终以 S2 独立复审为门。
+**验收证据：** 浏览器主流程可完成一餐；刷新后本地记录仍在；无云凭据时不调用网络 AI。S3 candidate 已覆盖保存失败回退、V1 runtime schema/version validation 和浏览器级重试；S2 confirmation 与 stale calculation freshness 仍由既有回归保护。
 
 ### M1：领域契约与 Nutrition Engine 固化
 
@@ -75,7 +79,7 @@
 - [x] 份量表达支持半碗、一碗、几块、三分之一盘、一勺、一两、两口的 demo 解析；
 - [x] 当前计算结果包含范围、识别元数据和来源；
 - [ ] 定义稳定的 `food`、`recipe`、`portion profile`、`meal item`、`nutrition estimate` / snapshot 领域类型和版本；
-- [x] 未匹配/宽泛/复合食物不再静默产生 generic nutrition；Nutrition Engine/API fail-closed，用户必须改成明确支持的食物或菜谱（S2 PR #6，待独立复审）；
+- [x] 未匹配/宽泛/复合食物不再静默产生 generic nutrition；Nutrition Engine/API fail-closed，用户必须改成明确支持的食物或菜谱（S2 PR #6，已合并）；
 - [x] canonical/alias resolver 只允许规范化后的 exact canonical / curated exact alias 成为 nutrition authority；
 - [x] heuristic candidate construction 绑定到单个 food mention span：每次 alias occurrence 保存独立 start/end、份量 context 和 trusted/embedded 状态；authority、suppression、dedupe 不再依赖整餐或 clause segmentation；
 - [x] broad suppression 仅允许 trusted occurrence 抑制与其实际 overlap 的 broad occurrence；一个 trusted mention 不能授权、重绑或吞掉另一个位置的 compound/broad mention；
@@ -87,7 +91,7 @@
 - [ ] 继续补合菜分摊、个人餐具和历史快照等更完整 fixture；
 - [ ] 持久化 `engine_version` 和输入数据源版本。
 
-**验收证据：** 当前 S2 candidate 上，更换 analyzer 不改变固定 Nutrition fixture；未知/宽泛/复合名称不会制造隐藏 authority；`以及 / 与 / 还有 × 糯米饭 / 蛋炒米饭 × 双向顺序` 均保留两个独立 mention candidate 与正确份量；`半碗米饭以及一碗米饭` 保留 100g / 200g 两个 trusted occurrence；旧计算响应不能覆盖新 review state；客户端可篡改的 review metadata 不再被表述为已验证审计来源。最终 PASS 仍以 PR #6 独立复审为门。
+**验收证据：** 已合并 S2 baseline 上，更换 analyzer 不改变固定 Nutrition fixture；未知/宽泛/复合名称不会制造隐藏 authority；`以及 / 与 / 还有 × 糯米饭 / 蛋炒米饭 × 双向顺序` 均保留两个独立 mention candidate 与正确份量；`半碗米饭以及一碗米饭` 保留 100g / 200g 两个 trusted occurrence；旧计算响应不能覆盖新 review state；客户端可篡改的 review metadata 不再被表述为已验证审计来源。PR #6 已经独立 exact-range 复审通过并合并。
 
 ### M2：真实数据边界与个人记忆
 
@@ -171,7 +175,7 @@
 - [x] 两用户、privileged/RLS-bypass、四种并发顺序与失败迁移回滚测试；
 - [x] PR #5 经独立复审 APPROVE，并 squash-merge 到 `main` commit `bbb7314970596bd3a753b94ebbdd119ea4027a19`。
 
-### S2 — 确认边界与 Nutrition correctness（三轮 findings 已修复，PR #6 待再复审）
+### S2 — 确认边界与 Nutrition correctness（已完成并合并）
 
 - [x] unknown/generic fallback 不再静默成为可信可保存结果；
 - [x] `needs_confirmation` 成为真实 UI/domain/API gate；
@@ -185,14 +189,18 @@
 - [x] 补充 resolver、review、engine、API、heuristic、request-guard、mention-span adversarial combinations 和代表性中餐 fixture tests；
 - [x] clean verification：Node.js 22.23.2，10 files / 55 tests，build，S1 PostgreSQL 15.19 regression，diff check 全 PASS。
 
-**完成门：** PR #6 必须经新的 exact-range 独立复审 APPROVE 后才能合并并把 S2 标记为 DONE。
+**完成状态：** PR #6 已经 exact-range 独立复审 APPROVE，并合并为当前 S3 base `5c0fb4b70d0a16c29a2e182c995f4eb5582bea82`。
 
-### S3 — 输入与本地持久化 hardening（S2 APPROVE/merge 后唯一下一步）
+### S3 — 输入与本地持久化 hardening（当前 PR review candidate）
 
-1. 对 JPEG/PNG/WebP 做结构/解码级验证，拒绝 truncated/malformed image；
-2. 继续保留真实 request body byte limit；
-3. localStorage 引入最小 schema version / runtime validation；
-4. 捕获保存失败并让用户可重试或保留当前输入。
+- [x] JPEG/PNG/WebP 在 provider 前做完整解码验证，拒绝 truncated/corrupt/magic-bytes-only 输入；
+- [x] 保留真实 streamed request-body byte limit 与 5 MiB encoded-image byte 上限；增加 16 MP 解码像素上限，V1 拒绝动画/多帧图片；
+- [x] localStorage 使用最小 V1 `{ schema_version, meals }` envelope 与严格 runtime validation；合法 base raw-array 历史可读取，并在下一次成功保存时懒迁移为 V1；
+- [x] 非法 JSON、结构/日期/营养错误、未知版本与 get/set storage exception 均 fail closed；
+- [x] 保存失败显示现有 `InlineMessage` 错误，不显示“已保存”、不改变今日汇总，并保留当前 result/draft 允许重试；
+- [x] 保持现有按本地 profile 隔离的 key 规则，不引入 migration framework 或数据库迁移。
+
+**完成门：** 当前 S3 PR 必须通过独立 exact-range 审查后才能合并；在此之前不得开始 S4/S5。
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 
@@ -256,9 +264,9 @@ npm run build
 
 ## 8. 下一步
 
-**当前不要开始 S3，先完成 PR #6 当前 exact-range 的独立复审。**
+**当前只做 S3 独立 exact-range 审查，不开始 S4/S5。**
 
-- 如果 PR #6 **APPROVE**：合并 S2，把 S2 标记为 DONE，然后 S3 成为唯一下一开发优先项；
-- 如果 PR #6 **NO-GO**：只修复有效的 S2 P0/P1/P2 finding，不混入 S3/Auth/OpenAI 等后续工作。
+- 如果 S3 PR **APPROVE**：合并 S3，然后 S4 才成为下一开发优先项；
+- 如果 S3 PR **NO-GO**：只修复有效的 S3 P0/P1/P2 finding，不混入 Auth/OpenAI/数据库迁移或后续功能。
 
 项目的稳定上下文、当前事实、关键边界和已知风险统一记录在根目录 [`CONTEXT.md`](../CONTEXT.md)。

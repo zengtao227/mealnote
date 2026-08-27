@@ -103,13 +103,19 @@ The mention-span rereview-fix content tree was verified on Linux / Node.js 22.23
 npm ci              # 0 vulnerabilities
 npm run lint
 npm run typecheck
-npm test             # 10 files / 55 tests
+npm test             # 10 files / 55 tests  (S2 checkpoint only — see PR #7 below for current totals)
 npm run build
 bash scripts/test-db-owner-integrity.sh
 git diff --check origin/main...HEAD
 ```
 
 All passed. New mention-span coverage includes `以及 / 与 / 还有` in both orders, both `糯米饭` and `蛋炒米饭`, broad/trusted ribs without punctuation segmentation, and repeated trusted rice mentions with independent portions. Independent rereview approved the final S2 candidate, and PR #6 is now merged into the exact S3 base `5c0fb4b70d0a16c29a2e182c995f4eb5582bea82`.
+
+PR #7 completed S3 input + local-persistence hardening and squash-merged to `main` as `2afd0dc3c633636a050c60a69c1d85ec3fa0664e`. It was reviewed on the exact range `5c0fb4b…706070e` (1 commit / 25 changed files). Three blockers found during review were closed before approval: a corrupt-second-frame WebP is now detected as multi-frame and rejected before any provider runs; an 11,237-byte 6000x6000 PNG is rejected at the metadata pixel guard without ever creating a raw decode pipeline; and the previous raw `SavedMeal[]` format is read back and lazily migrated to the V1 envelope on the next successful save.
+
+Verification on the merged candidate (Node 22, npm `npm ci` 0 vulnerabilities): lint 0 errors, typecheck, **18 files / 142 tests**, production build, `npm audit --audit-level=low` 0 vulnerabilities, and `git diff --check`. A real production-browser run covered the legacy-to-V1 migration path and the `QuotaExceededError` path end-to-end: the stored bytes, today's summary and the current meal state are unchanged on a failed save, and the retry after recovery saves exactly once. The remaining local-persistence fail-closed branches (invalid JSON, unknown `schema_version`, malformed nutrition snapshot, `getItem` throwing) are unit-covered rather than browser-covered.
+
+PR #8 added the repository's first reusable CI workflow, merged as `80ebd37fdfb002672ad7b18c14509def9f29506f`. `.github/workflows/ci.yml` runs `npm ci`, lint, typecheck, test, build and `npm audit --audit-level=low` on Node 22 for every pull request and every push to `main`. Do not add per-PR throwaway verification workflows; reuse this one.
 
 ### Not production-ready yet
 
@@ -142,6 +148,7 @@ src/lib/ai/heuristic-provider.ts
 
 src/lib/http/read-json-body.ts
 src/lib/http/validate-image-data-url.ts
+src/lib/storage/local-meal-storage.ts
 
 src/lib/nutrition/engine.ts
 src/lib/nutrition/food-database.ts
@@ -150,6 +157,8 @@ src/lib/nutrition/review.ts
 
 supabase/migrations/0001_initial.sql
 supabase/migrations/0002_owner_integrity.sql
+
+.github/workflows/ci.yml
 ```
 
 Use the current repository tree rather than this list if files move later.
@@ -164,9 +173,9 @@ PR #5 binds meal relationships to owner-aware foreign keys and enforces private 
 
 `/api/analyze` calls OpenAI whenever `OPENAI_API_KEY` exists. Until real Auth and per-user usage protection exist, a real key must not be deployed to a public environment.
 
-### C. Image validation is not full image validation — ADDRESSED in S3 candidate, pending independent review
+### C. Image validation is not full image validation — CLOSED in S3
 
-The S3 candidate retains the streamed request-body limit, data URL/type checks and 5 MiB encoded-image byte cap, and pins the direct decoder dependency at `sharp 0.35.4`. Both metadata inspection and raw decode use the same untrusted-input options: `failOn: "warning"`, a 16 MP `limitInputPixels`, a 4-channel `limitInputChannels`, `unlimited: false`, and a 3-second libvips processing timeout. V1 rejects any `pages !== 1` before a provider can run, so valid animation and malformed later frames cannot pass through a first-frame-only decode. JPEG/PNG/WebP must survive a bounded full single-frame decode, and MIME/signature/decoded format must agree.
+PR #7 retains the streamed request-body limit, data URL/type checks and 5 MiB encoded-image byte cap, and pins the direct decoder dependency at `sharp 0.35.4`. Both metadata inspection and raw decode use the same untrusted-input options: `failOn: "warning"`, a 16 MP `limitInputPixels`, a 4-channel `limitInputChannels`, `unlimited: false`, and a 3-second libvips processing timeout. V1 rejects any `pages !== 1` before a provider can run, so valid animation and malformed later frames cannot pass through a first-frame-only decode. JPEG/PNG/WebP must survive a bounded full single-frame decode, and MIME/signature/decoded format must agree.
 
 The 16 MP / 4-channel / 3-second values are an S3 application-level resource budget, not proof that a public image endpoint is fully DoS-hardened. They close the reproduced 36 MP single-request amplification and later-frame bypass, but `sharp.timeout()` starts only after libvips opens the input and does not bound thread-queue delay or total request lifetime. Outer request deadlines plus deployment-level concurrency, CPU and memory controls remain required before public OpenAI deployment.
 
@@ -182,9 +191,9 @@ The Nutrition Engine resolver only accepts normalized exact canonical-name / cur
 
 PR #6 uses a separate review state and explicit acknowledgement gate. User edits clear stale assumptions and invalidate confirmation when required. In-flight calculation results are revision-bound and abortable, so an edit/remove/reset/new analysis invalidates the request before the response can become current nutrition. Because the calculation endpoint has no server-verifiable original analysis binding yet, field provenance, confirmation state and recognition source/confidence are explicitly labeled `client-reported`, not verified audit provenance.
 
-### G. Local persistence needs resilience/versioning — ADDRESSED in S3 candidate, pending independent review
+### G. Local persistence needs resilience/versioning — CLOSED in S3
 
-The S3 candidate stores meals in a strict V1 `{ schema_version, meals }` envelope and validates the full saved nutrition snapshot at runtime. Valid base-version raw arrays are accepted only after the same strict `SavedMeal` validation and are lazily migrated to the V1 envelope on the next successful save. Invalid legacy arrays, invalid JSON, invalid fields/dates/nutrition, unknown versions and storage read/write exceptions fail closed. A failed save leaves the current result/draft and summary unchanged and remains retryable.
+PR #7 stores meals in a strict V1 `{ schema_version, meals }` envelope and validates the full saved nutrition snapshot at runtime. Valid base-version raw arrays are accepted only after the same strict `SavedMeal` validation and are lazily migrated to the V1 envelope on the next successful save. Invalid legacy arrays, invalid JSON, invalid fields/dates/nutrition, unknown versions and storage read/write exceptions fail closed. A failed save leaves the current result/draft and summary unchanged and remains retryable.
 
 ## 6. Approved immediate development order
 
@@ -197,7 +206,7 @@ S1  database authority / owner integrity  DONE
  ↓
 S2  confirmation + nutrition correctness  DONE (merged PR #6)
  ↓
-S3  image + local persistence hardening   REVIEW (current candidate)
+S3  image + local persistence hardening   DONE (merged PR #7)
  ↓
 S4  Supabase Auth + PostgreSQL adapter
  ↓
@@ -222,9 +231,9 @@ PR #6 must stay limited to confirmation and nutrition correctness:
 
 Do **not** mix Supabase Auth, real OpenAI deployment, image decode hardening, localStorage resilience/versioning, database-schema redesign, or product expansion into S2.
 
-### Current S3 scope
+### S3 scope as merged
 
-The current S3 review candidate is limited to input/local persistence hardening:
+PR #7 stayed limited to input/local persistence hardening:
 
 - bounded single-frame structural/decode validation for JPEG/PNG/WebP, including malformed/truncated/corrupt-later-frame and high-pixel fixtures;
 - retain the real streamed request-body byte limit;
@@ -249,6 +258,7 @@ npm run build
 ```
 
 5. dependency changes also run `npm audit`;
+   CI (`.github/workflows/ci.yml`) runs this same set on every PR — reuse it rather than adding a per-PR workflow;
 6. database changes require owner/RLS/integrity regression tests;
 7. input-boundary changes require adversarial malformed-input tests;
 8. async state changes require stale-response/deferred-result tests when a network response can overwrite mutable user state;
@@ -281,4 +291,4 @@ A new developer or agent should read, in this order:
 4. `docs/DEVELOPMENT_PLAN.md` — current implementation sequence;
 5. the current branch diff and tests — actual source of truth for the task at hand.
 
-If PR #6 has since been approved/merged, update S2 to DONE and make S3 the sole next implementation priority before beginning new work.
+S0-S3 are merged. Per the approved order in section 6, S4 (Supabase Auth + session-derived owner) is the next implementation priority. A separate S3.5 proposal exists at `docs/proposals/S3.5-food-resolution-usability.md`; it is **not approved** and must be independently reviewed before any of it is implemented or before it displaces S4.

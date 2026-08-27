@@ -1,0 +1,302 @@
+{
+  "schema_version": 1,
+  "category": "multi-clause",
+  "category_label": "多子句与连接词",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "clause-003",
+    "clause-008",
+    "clause-010"
+  ],
+  "entries": [
+    {
+      "id": "clause-001",
+      "input_text": "半碗米饭以及一碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        },
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 2,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "S2 回归：重复 trusted mention 独立份量"
+    },
+    {
+      "id": "clause-002",
+      "input_text": "米饭与番茄炒蛋",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            130,
+            170
+          ]
+        },
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            130,
+            170
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-003",
+      "input_text": "红烧排骨还有冬瓜汤",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "红烧排骨",
+          "mention": "红烧排骨",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            120
+          ]
+        },
+        {
+          "identity": "冬瓜汤",
+          "mention": "冬瓜汤",
+          "occurrence": 1,
+          "expected_grams_range": [
+            200,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-004",
+      "input_text": "一碗汤面、半盘宫保鸡丁",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "汤面",
+          "mention": "汤面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            440
+          ]
+        },
+        {
+          "identity": "宫保鸡丁",
+          "mention": "宫保鸡丁",
+          "occurrence": 1,
+          "expected_grams_range": [
+            160,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-005",
+      "input_text": "吃了米饭跟饺子",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            130,
+            170
+          ]
+        },
+        {
+          "identity": "饺子",
+          "mention": "饺子",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "未枚举连接词 跟"
+    },
+    {
+      "id": "clause-006",
+      "input_text": "番茄炒蛋加红烧排骨加一碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            130,
+            170
+          ]
+        },
+        {
+          "identity": "红烧排骨",
+          "mention": "红烧排骨",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            120
+          ]
+        },
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-007",
+      "input_text": "米饭、番茄炒蛋以及红烧排骨各来一点",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            80
+          ]
+        },
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            80
+          ]
+        },
+        {
+          "identity": "红烧排骨",
+          "mention": "红烧排骨",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            80
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-008",
+      "input_text": "半碗米饭、四块红烧排骨和一碗冬瓜汤",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        },
+        {
+          "identity": "红烧排骨",
+          "mention": "红烧排骨",
+          "occurrence": 1,
+          "expected_grams_range": [
+            95,
+            130
+          ]
+        },
+        {
+          "identity": "冬瓜汤",
+          "mention": "冬瓜汤",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            260
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-009",
+      "input_text": "十二个饺子再加半碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "饺子",
+          "mention": "饺子",
+          "occurrence": 1,
+          "expected_grams_range": [
+            280,
+            320
+          ]
+        },
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clause-010",
+      "input_text": "番茄炒蛋两口搭配宫保鸡丁一勺",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            30,
+            50
+          ]
+        },
+        {
+          "identity": "宫保鸡丁",
+          "mention": "宫保鸡丁",
+          "occurrence": 1,
+          "expected_grams_range": [
+            20,
+            35
+          ]
+        }
+      ],
+      "notes": "未枚举连接表达应保守处理"
+    }
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "category": "shared-dishes",
+  "category_label": "合菜分摊",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "shared-003",
+    "shared-007",
+    "shared-010"
+  ],
+  "entries": [
+    {
+      "id": "shared-001",
+      "input_text": "四个人点了一盘红烧排骨，我吃了四分之一",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "红烧排骨",
+          "mention": "红烧排骨",
+          "occurrence": 1,
+          "expected_grams_range": [
+            75,
+            90
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shared-002",
+      "input_text": "两个人分了一盘宫保鸡丁",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "宫保鸡丁",
+          "mention": "宫保鸡丁",
+          "occurrence": 1,
+          "expected_grams_range": [
+            160,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shared-003",
+      "input_text": "一桌菜，番茄炒蛋我吃了三口",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            50,
+            70
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shared-004",
+      "input_text": "三个人一锅冬瓜汤，我喝了一碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "冬瓜汤",
+          "mention": "冬瓜汤",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            260
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shared-005",
+      "input_text": "一家人吃饺子，我吃了十二个",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "饺子",
+          "mention": "饺子",
+          "occurrence": 1,
+          "expected_grams_range": [
+            280,
+            320
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shared-006",
+      "input_text": "合点一份宫保鸡丁，我大概吃了一半",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "宫保鸡丁",
+          "mention": "宫保鸡丁",
+          "occurrence": 1,
+          "expected_grams_range": [
+            160,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shared-007",
+      "input_text": "一盘鱼香肉丝，我大概吃了三分之一",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "鱼香肉丝",
+          "mention": "鱼香肉丝",
+          "occurrence": 1,
+          "expected_grams_range": [
+            100,
+            140
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "shared-008",
+      "input_text": "火锅里的肥牛我吃了十片",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "肥牛",
+          "mention": "肥牛",
+          "occurrence": 1,
+          "expected_grams_range": [
+            120,
+            220
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "shared-009",
+      "input_text": "两个人分一份麻婆豆腐，我吃了一半",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "麻婆豆腐",
+          "mention": "麻婆豆腐",
+          "occurrence": 1,
+          "expected_grams_range": [
+            150,
+            220
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "shared-010",
+      "input_text": "一只烤鸭四个人分，我吃了四分之一",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "烤鸭",
+          "mention": "烤鸭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            280
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    }
+  ]
+}

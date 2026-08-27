@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "category": "colloquial-portions",
+  "category_label": "口语份量",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "portion-002",
+    "portion-008",
+    "portion-010"
+  ],
+  "entries": [
+    {
+      "id": "portion-001",
+      "input_text": "米饭吃了两口",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            30,
+            45
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-002",
+      "input_text": "番茄炒蛋一勺",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            20,
+            35
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-003",
+      "input_text": "排骨吃了一两",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "排骨",
+          "mention": "排骨",
+          "occurrence": 1,
+          "identity_specificity": "broad",
+          "expected_grams_range": [
+            45,
+            55
+          ]
+        }
+      ],
+      "notes": "宽泛词只能确认到排骨，不得静默提升为具体菜谱"
+    },
+    {
+      "id": "portion-004",
+      "input_text": "米饭一小碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            130,
+            170
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-005",
+      "input_text": "冬瓜汤喝了两口",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "冬瓜汤",
+          "mention": "冬瓜汤",
+          "occurrence": 1,
+          "expected_grams_range": [
+            30,
+            50
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-006",
+      "input_text": "饺子吃了三四个",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "饺子",
+          "mention": "饺子",
+          "occurrence": 1,
+          "expected_grams_range": [
+            70,
+            110
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-007",
+      "input_text": "宫保鸡丁夹了几筷子",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "宫保鸡丁",
+          "mention": "宫保鸡丁",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            80
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-008",
+      "input_text": "米饭大概吃了一勺",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            10,
+            25
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-009",
+      "input_text": "冬瓜汤喝了半碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "冬瓜汤",
+          "mention": "冬瓜汤",
+          "occurrence": 1,
+          "expected_grams_range": [
+            100,
+            140
+          ]
+        }
+      ]
+    },
+    {
+      "id": "portion-010",
+      "input_text": "番茄炒蛋吃了两口",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            30,
+            50
+          ]
+        }
+      ]
+    }
+  ]
+}

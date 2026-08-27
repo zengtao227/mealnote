@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "measure:catalog-baseline": "vitest run src/lib/evaluation/meal-corpus-baseline.test.ts"
   },
   "dependencies": {
     "lucide-react": "1.34.0",

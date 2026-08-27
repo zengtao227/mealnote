@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "category": "staples",
+  "category_label": "主食",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "staples-004",
+    "staples-008",
+    "staples-010"
+  ],
+  "entries": [
+    {
+      "id": "staples-001",
+      "input_text": "午饭半碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        }
+      ]
+    },
+    {
+      "id": "staples-002",
+      "input_text": "晚上吃了一碗白米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "白米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "alias 白米饭"
+    },
+    {
+      "id": "staples-003",
+      "input_text": "中午十个水饺",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "饺子",
+          "mention": "水饺",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            280
+          ]
+        }
+      ],
+      "notes": "alias 水饺"
+    },
+    {
+      "id": "staples-004",
+      "input_text": "早饭一个馒头",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "馒头",
+          "mention": "馒头",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            120
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "staples-005",
+      "input_text": "早上喝了一碗小米粥",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "小米粥",
+          "mention": "小米粥",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            280
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "staples-006",
+      "input_text": "两碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            380,
+            420
+          ]
+        }
+      ]
+    },
+    {
+      "id": "staples-007",
+      "input_text": "半个馒头加一碗粥",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "馒头",
+          "mention": "馒头",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            60
+          ]
+        },
+        {
+          "identity": "粥",
+          "mention": "粥",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            280
+          ]
+        }
+      ],
+      "notes": "catalog 外×2"
+    },
+    {
+      "id": "staples-008",
+      "input_text": "一碗汤面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "汤面",
+          "mention": "汤面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            440
+          ]
+        }
+      ]
+    },
+    {
+      "id": "staples-009",
+      "input_text": "早饭吃了两个花卷",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "花卷",
+          "mention": "花卷",
+          "occurrence": 1,
+          "expected_grams_range": [
+            140,
+            220
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "staples-010",
+      "input_text": "吃了半个红薯和一小碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "红薯",
+          "mention": "红薯",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            140
+          ]
+        },
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            130,
+            170
+          ]
+        }
+      ],
+      "notes": "支持与 catalog 外条目的混合输入"
+    }
+  ]
+}

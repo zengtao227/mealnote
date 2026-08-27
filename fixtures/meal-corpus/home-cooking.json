@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "category": "home-cooking",
+  "category_label": "家常炒菜",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "home-003",
+    "home-007",
+    "home-010"
+  ],
+  "entries": [
+    {
+      "id": "home-001",
+      "input_text": "三分之一盘番茄炒蛋",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "番茄炒蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            100,
+            140
+          ]
+        }
+      ]
+    },
+    {
+      "id": "home-002",
+      "input_text": "西红柿炒鸡蛋吃了半盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋",
+          "mention": "西红柿炒鸡蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            160,
+            200
+          ]
+        }
+      ],
+      "notes": "alias"
+    },
+    {
+      "id": "home-003",
+      "input_text": "红烧排骨四块",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "红烧排骨",
+          "mention": "红烧排骨",
+          "occurrence": 1,
+          "expected_grams_range": [
+            95,
+            130
+          ]
+        }
+      ]
+    },
+    {
+      "id": "home-004",
+      "input_text": "宫保鸡丁半盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "宫保鸡丁",
+          "mention": "宫保鸡丁",
+          "occurrence": 1,
+          "expected_grams_range": [
+            160,
+            200
+          ]
+        }
+      ]
+    },
+    {
+      "id": "home-005",
+      "input_text": "一碗冬瓜汤",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "冬瓜汤",
+          "mention": "冬瓜汤",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            260
+          ]
+        }
+      ]
+    },
+    {
+      "id": "home-006",
+      "input_text": "青椒肉丝吃了三分之一盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "青椒肉丝",
+          "mention": "青椒肉丝",
+          "occurrence": 1,
+          "expected_grams_range": [
+            100,
+            140
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "home-007",
+      "input_text": "麻婆豆腐半盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "麻婆豆腐",
+          "mention": "麻婆豆腐",
+          "occurrence": 1,
+          "expected_grams_range": [
+            150,
+            200
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "home-008",
+      "input_text": "干煸四季豆吃了几筷子",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "干煸四季豆",
+          "mention": "干煸四季豆",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            80
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "home-009",
+      "input_text": "清炒西兰花吃了半盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "清炒西兰花",
+          "mention": "清炒西兰花",
+          "occurrence": 1,
+          "expected_grams_range": [
+            140,
+            200
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "home-010",
+      "input_text": "鱼香肉丝吃了三分之一盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "鱼香肉丝",
+          "mention": "鱼香肉丝",
+          "occurrence": 1,
+          "expected_grams_range": [
+            100,
+            140
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    }
+  ]
+}

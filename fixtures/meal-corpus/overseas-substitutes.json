@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "category": "overseas-substitutes",
+  "category_label": "海外替代食材",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "overseas-002",
+    "overseas-007",
+    "overseas-010"
+  ],
+  "entries": [
+    {
+      "id": "overseas-001",
+      "input_text": "用意面做的炒面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "炒面",
+          "mention": "炒面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            250,
+            350
+          ]
+        }
+      ],
+      "notes": "catalog 外；内含 面"
+    },
+    {
+      "id": "overseas-002",
+      "input_text": "买不到小白菜，用羽衣甘蓝炒了一盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "羽衣甘蓝",
+          "mention": "羽衣甘蓝",
+          "occurrence": 1,
+          "expected_grams_range": [
+            150,
+            250
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "overseas-003",
+      "input_text": "用培根代替腊肉炒了半盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "培根",
+          "mention": "培根",
+          "occurrence": 1,
+          "expected_grams_range": [
+            50,
+            80
+          ]
+        }
+      ],
+      "notes": "catalog 外；干扰项 腊肉 不应被记为食用"
+    },
+    {
+      "id": "overseas-004",
+      "input_text": "拿希腊酸奶当早餐",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "希腊酸奶",
+          "mention": "希腊酸奶",
+          "occurrence": 1,
+          "expected_grams_range": [
+            150,
+            200
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "overseas-005",
+      "input_text": "用鹰嘴豆泥配馒头",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "鹰嘴豆泥",
+          "mention": "鹰嘴豆泥",
+          "occurrence": 1,
+          "expected_grams_range": [
+            50,
+            80
+          ]
+        },
+        {
+          "identity": "馒头",
+          "mention": "馒头",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            120
+          ]
+        }
+      ],
+      "notes": "catalog 外×2"
+    },
+    {
+      "id": "overseas-006",
+      "input_text": "德国香肠两根",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "香肠",
+          "mention": "香肠",
+          "occurrence": 1,
+          "expected_grams_range": [
+            120,
+            180
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "overseas-007",
+      "input_text": "用西葫芦代替丝瓜炒了一盘",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "西葫芦",
+          "mention": "西葫芦",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            280
+          ]
+        }
+      ],
+      "notes": "catalog 外；干扰项丝瓜不应被记为食用"
+    },
+    {
+      "id": "overseas-008",
+      "input_text": "早餐吃了一个贝果夹煎蛋",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "贝果",
+          "mention": "贝果",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            120
+          ]
+        },
+        {
+          "identity": "煎蛋",
+          "mention": "煎蛋",
+          "occurrence": 1,
+          "expected_grams_range": [
+            40,
+            70
+          ]
+        }
+      ],
+      "notes": "catalog 外×2"
+    },
+    {
+      "id": "overseas-009",
+      "input_text": "用意大利米熬了一碗粥",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "粥",
+          "mention": "粥",
+          "occurrence": 1,
+          "expected_grams_range": [
+            220,
+            280
+          ]
+        }
+      ],
+      "notes": "catalog 外；原料不是额外食用条目"
+    },
+    {
+      "id": "overseas-010",
+      "input_text": "超市买的熏三文鱼吃了五片",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "熏三文鱼",
+          "mention": "熏三文鱼",
+          "occurrence": 1,
+          "expected_grams_range": [
+            70,
+            120
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    }
+  ]
+}

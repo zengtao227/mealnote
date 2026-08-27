@@ -1,7 +1,7 @@
 # MealNote 开发计划
 
 **目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。
-**当前阶段：** S0、S1、S2 已完成并合并；S3 已完成实现与验证候选，等待独立 PR 审查；S4/S5 尚未开始。
+**当前阶段：** S0–S3 已完成并合并（S3 = PR #7，`2afd0dc`）；CI 已上线（PR #8，`80ebd37`）；S4/S5 尚未开始。
 **最后复核：** 2026-08-27
 **工作方式：** 垂直切片、每步可运行、每个不确定性都保留回退；不为了“生产感”提前引入复杂基础设施。
 
@@ -40,13 +40,13 @@
 当前剩余 pre-cloud 关键边界主要是：
 
 1. 一旦服务器配置真实 `OPENAI_API_KEY`，当前 `/api/analyze` 尚无真实用户鉴权、per-user rate limit 或成本保护；
-2. S3 已实现图片完整解码校验和本地持久化 fail-closed/versioning，但在独立 PR 审查 APPROVE 前仍是 review candidate，不能视为已合并基线。
+2. S3 的图片完整解码校验与本地持久化 fail-closed/versioning 已随 PR #7 合并；其 16 MP / 4 通道 / 3 秒预算是应用级预算，不等于公开图片端点已完成 DoS 加固。
 
 这些边界继续按最小切片推进，不需要重写应用。
 
-### 2.3 S3 image/persistence review-candidate boundary
+### 2.3 S3 image/persistence boundary as merged
 
-S3 remains a review candidate until PR #7 receives a fresh exact-range approval. The image boundary now pins `sharp 0.35.4`, rejects all multi-frame input, and applies the same `failOn: "warning"`, 16 MP pixel, 4-channel, `unlimited: false`, and 3-second processing timeout controls to metadata inspection and raw decode. These limits are deliberately treated as an application-level budget only: they close the reproduced later-frame bypass and 36 MP decode amplification, but do not replace an outer request deadline or deployment-level concurrency/CPU/memory controls. A real public OpenAI endpoint remains NO-GO until those later deployment protections and Auth/cost controls are reviewed in their own stage.
+S3 merged as `2afd0dc` after independent exact-range approval on `5c0fb4b…706070e`. The image boundary now pins `sharp 0.35.4`, rejects all multi-frame input, and applies the same `failOn: "warning"`, 16 MP pixel, 4-channel, `unlimited: false`, and 3-second processing timeout controls to metadata inspection and raw decode. These limits are deliberately treated as an application-level budget only: they close the reproduced later-frame bypass and 36 MP decode amplification, but do not replace an outer request deadline or deployment-level concurrency/CPU/memory controls. A real public OpenAI endpoint remains NO-GO until those later deployment protections and Auth/cost controls are reviewed in their own stage.
 
 Local persistence accepts the previous raw `SavedMeal[]` format only after strict runtime validation. A successful subsequent save writes the V1 `{ schema_version: 1, meals }` envelope; failed writes leave the old bytes and current meal state untouched. Malformed legacy data and unknown versions remain fail-closed.
 
@@ -67,7 +67,7 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 - [x] S3 对 `localStorage` quota/security 等读写失败提供用户可理解的错误，保存失败时保留当前结果且不污染今日汇总；
 - [x] 低置信/关键缺失项进入真实“必须确认”状态；UI 与 Nutrition Engine/API 均会阻止未确认项继续计算（S2 PR #6，已合并）。
 
-**验收证据：** 浏览器主流程可完成一餐；刷新后本地记录仍在；无云凭据时不调用网络 AI。S3 candidate 已覆盖保存失败回退、V1 runtime schema/version validation 和浏览器级重试；S2 confirmation 与 stale calculation freshness 仍由既有回归保护。
+**验收证据：** 浏览器主流程可完成一餐；刷新后本地记录仍在；无云凭据时不调用网络 AI。PR #7 已覆盖保存失败回退、V1 runtime schema/version validation 和浏览器级重试；S2 confirmation 与 stale calculation freshness 仍由既有回归保护。
 
 ### M1：领域契约与 Nutrition Engine 固化
 
@@ -191,7 +191,7 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 
 **完成状态：** PR #6 已经 exact-range 独立复审 APPROVE，并合并为当前 S3 base `5c0fb4b70d0a16c29a2e182c995f4eb5582bea82`。
 
-### S3 — 输入与本地持久化 hardening（当前 PR review candidate）
+### S3 — 输入与本地持久化 hardening（已完成，PR #7 合并为 `2afd0dc`）
 
 - [x] JPEG/PNG/WebP 在 provider 前做完整解码验证，拒绝 truncated/corrupt/magic-bytes-only 输入；
 - [x] 保留真实 streamed request-body byte limit 与 5 MiB encoded-image byte 上限；增加 16 MP 解码像素上限，V1 拒绝动画/多帧图片；
@@ -200,7 +200,9 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 - [x] 保存失败显示现有 `InlineMessage` 错误，不显示“已保存”、不改变今日汇总，并保留当前 result/draft 允许重试；
 - [x] 保持现有按本地 profile 隔离的 key 规则，不引入 migration framework 或数据库迁移。
 
-**完成门：** 当前 S3 PR 必须通过独立 exact-range 审查后才能合并；在此之前不得开始 S4/S5。
+**完成状态：** 独立 exact-range 复审在 `5c0fb4b…706070e`（1 commit / 25 files）APPROVE。复审期间关闭三个 blocker：损坏第二帧的 WebP 现被识别为多帧并在 provider 前拒绝；11,237 字节的 6000×6000 PNG 在 metadata pixel guard 阶段即被拒绝，不会创建 raw decode pipeline；上一正式版本的 raw `SavedMeal[]` 可读回并在下一次成功保存时懒迁移为 V1。验证：Node 22 / `npm ci` 0 vulnerabilities / lint 0 errors / typecheck / **18 files / 142 tests** / build / `npm audit --audit-level=low` 0 vulnerabilities / `git diff --check`。
+
+**残余风险（不阻塞 S3，必须带到 S4/S5）：** 单请求最多仍可能产生约 64 MB raw bitmap，3 秒 `sharp.timeout()` 只约束单请求解码、不约束并发；localStorage 不是防篡改存储。因此 Auth、per-user 限额、资源隔离和真实 OpenAI key 公开部署的硬门继续保留。
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 
@@ -264,9 +266,10 @@ npm run build
 
 ## 8. 下一步
 
-**当前只做 S3 独立 exact-range 审查，不开始 S4/S5。**
+S0–S3 已全部合并。按第 4 节的既定顺序，**S4（Supabase Auth + session-derived owner）是下一开发优先项**。
 
-- 如果 S3 PR **APPROVE**：合并 S3，然后 S4 才成为下一开发优先项；
-- 如果 S3 PR **NO-GO**：只修复有效的 S3 P0/P1/P2 finding，不混入 Auth/OpenAI/数据库迁移或后续功能。
+另有一份 S3.5 提案 [`proposals/S3.5-food-resolution-usability.md`](proposals/S3.5-food-resolution-usability.md)，主张在 S4 之前插入一个产品价值切片，验证「10 秒记录一餐」这一交付原则第 1 条是否成立（S0→S3 从未触及它）。**该提案尚未批准**，必须经独立复审后才能实施或改变上面的顺序。
+
+工程约定变更：CI 已上线（`.github/workflows/ci.yml`，PR #8）。每个 PR 复用它，不再新建一次性验证 workflow。
 
 项目的稳定上下文、当前事实、关键边界和已知风险统一记录在根目录 [`CONTEXT.md`](../CONTEXT.md)。

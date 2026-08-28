@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "category": "takeout",
+  "category_label": "外卖",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "takeout-003",
+    "takeout-008",
+    "takeout-010"
+  ],
+  "entries": [
+    {
+      "id": "takeout-001",
+      "input_text": "点了一份黄焖鸡米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "黄焖鸡米饭",
+          "mention": "黄焖鸡米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            500,
+            650
+          ]
+        }
+      ],
+      "notes": "复合：内含 米饭"
+    },
+    {
+      "id": "takeout-002",
+      "input_text": "外卖一份麻辣烫",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "麻辣烫",
+          "mention": "麻辣烫",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            600
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "takeout-003",
+      "input_text": "叫了份炒饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "炒饭",
+          "mention": "炒饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            350,
+            450
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "takeout-004",
+      "input_text": "外卖的宫保鸡丁盖饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "宫保鸡丁盖饭",
+          "mention": "宫保鸡丁盖饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            600
+          ]
+        }
+      ],
+      "notes": "复合：内含 宫保鸡丁"
+    },
+    {
+      "id": "takeout-005",
+      "input_text": "点了个汉堡和薯条",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "汉堡",
+          "mention": "汉堡",
+          "occurrence": 1,
+          "expected_grams_range": [
+            200,
+            250
+          ]
+        },
+        {
+          "identity": "薯条",
+          "mention": "薯条",
+          "occurrence": 1,
+          "expected_grams_range": [
+            100,
+            130
+          ]
+        }
+      ],
+      "notes": "catalog 外×2"
+    },
+    {
+      "id": "takeout-006",
+      "input_text": "一份煲仔饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "煲仔饭",
+          "mention": "煲仔饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            550
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "takeout-007",
+      "input_text": "外卖沙县拌面一份",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "拌面",
+          "mention": "拌面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            300,
+            400
+          ]
+        }
+      ],
+      "notes": "catalog 外；内含 面"
+    },
+    {
+      "id": "takeout-008",
+      "input_text": "外卖点了一份重庆小面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "重庆小面",
+          "mention": "重庆小面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            350,
+            500
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "takeout-009",
+      "input_text": "点了一份照烧鸡饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "照烧鸡饭",
+          "mention": "照烧鸡饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            650
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "takeout-010",
+      "input_text": "外卖点了半份酸菜鱼和一碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "酸菜鱼",
+          "mention": "酸菜鱼",
+          "occurrence": 1,
+          "expected_grams_range": [
+            250,
+            400
+          ]
+        },
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "catalog 外菜品与支持主食的混合输入"
+    }
+  ]
+}

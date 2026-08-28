@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "category": "hotpot-noodles",
+  "category_label": "火锅与汤面",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "hotpot-002",
+    "hotpot-007",
+    "hotpot-010"
+  ],
+  "entries": [
+    {
+      "id": "hotpot-001",
+      "input_text": "晚上吃火锅，涮了不少肥牛",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "肥牛",
+          "mention": "肥牛",
+          "occurrence": 1,
+          "expected_grams_range": [
+            150,
+            250
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "hotpot-002",
+      "input_text": "一碗牛肉面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "牛肉面",
+          "mention": "牛肉面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            550
+          ]
+        }
+      ],
+      "notes": "catalog 外；内含 面"
+    },
+    {
+      "id": "hotpot-003",
+      "input_text": "吃了碗汤面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "汤面",
+          "mention": "汤面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            440
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hotpot-004",
+      "input_text": "火锅涮了半盘毛肚",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "毛肚",
+          "mention": "毛肚",
+          "occurrence": 1,
+          "expected_grams_range": [
+            80,
+            120
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "hotpot-005",
+      "input_text": "一碗兰州拉面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "兰州拉面",
+          "mention": "兰州拉面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            550
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "hotpot-006",
+      "input_text": "汤面只吃了一半",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "汤面",
+          "mention": "汤面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            190,
+            230
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hotpot-007",
+      "input_text": "麻辣烫里吃了六个鱼丸",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "鱼丸",
+          "mention": "鱼丸",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            150
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "hotpot-008",
+      "input_text": "吃了一碗炸酱面",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "炸酱面",
+          "mention": "炸酱面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            550
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "hotpot-009",
+      "input_text": "火锅里吃了两盘羊肉卷",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "羊肉卷",
+          "mention": "羊肉卷",
+          "occurrence": 1,
+          "expected_grams_range": [
+            250,
+            400
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "hotpot-010",
+      "input_text": "酸辣粉吃了一碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "酸辣粉",
+          "mention": "酸辣粉",
+          "occurrence": 1,
+          "expected_grams_range": [
+            400,
+            550
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    }
+  ]
+}

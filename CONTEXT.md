@@ -155,6 +155,10 @@ src/lib/nutrition/food-database.ts
 src/lib/nutrition/request-guard.ts
 src/lib/nutrition/review.ts
 
+fixtures/meal-corpus/
+src/lib/evaluation/meal-corpus.ts
+docs/reports/s3.5-text-heuristic-baseline.md
+
 supabase/migrations/0001_initial.sql
 supabase/migrations/0002_owner_integrity.sql
 
@@ -207,6 +211,12 @@ S1  database authority / owner integrity  DONE
 S2  confirmation + nutrition correctness  DONE (merged PR #6)
  ↓
 S3  image + local persistence hardening   DONE (merged PR #7)
+ ↓
+S3.5-A corpus + heuristic baseline        CURRENT CANDIDATE
+ ↓
+S3.5-B missing-item recovery + catalog UX
+ ↓
+S3.5 catalog audit/batch + formative test
  ↓
 S4  Supabase Auth + PostgreSQL adapter
  ↓
@@ -291,4 +301,4 @@ A new developer or agent should read, in this order:
 4. `docs/DEVELOPMENT_PLAN.md` — current implementation sequence;
 5. the current branch diff and tests — actual source of truth for the task at hand.
 
-S0-S3 are merged. Per the approved order in section 6, S4 (Supabase Auth + session-derived owner) is the next implementation priority. A separate S3.5 proposal exists at `docs/proposals/S3.5-food-resolution-usability.md`; it is **not approved** and must be independently reviewed before any of it is implemented or before it displaces S4.
+S0-S3 are merged. S3.5 is partially approved: A1/A4 is the current candidate and must be independently reviewed before merge. Its synthetic text/heuristic baseline contains 90 meals / 112 expected mentions and currently reports 58.9% extraction recall, 49.5% specific-identity catalog coverage, 41.1% current-UI-recoverable meals, and zero silent wrong or unattributed trusted candidates. These numbers are deterministic regression evidence only, not real-user or 10-second validation. After A1/A4, implement missing-item recovery + catalog search, then collision audit and a source-reviewed small catalog batch, followed by an early formative usability test. S4 Auth follows that bounded product-value slice; source evidence and OpenAI contract tests remain mandatory before S5 real-key deployment.

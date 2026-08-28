@@ -7,11 +7,11 @@
 - Evidence source: 本项目需求访谈与竞品体验结论；正式开发后需通过可用性测试补充量化基线。
 
 ## 2. Quantified Gap
-- Baseline metric: 当前基线待测；首轮测试记录传统应用完成一餐所需时间、操作次数和放弃率。
+- Baseline metric: S3.5 synthetic text/heuristic baseline（90 餐 / 112 个 food mention）显示 extraction recall 58.9%、当前 UI 可恢复餐 41.1%、silent wrong canonicalization 0；这只是确定性产品回归基线，不代表真实用户分布或完成时长。
 - Target metric: 典型一餐从输入到保存的中位时间不超过 10 秒，确认页中位修改不超过 2 次。
 - Failure or exit point: 识别结果无法快速修正、营养范围无依据、或一餐记录耗时持续超过 20 秒时停止扩大 AI 功能。
 - Acceptable error / misclassification rate: 首轮原型目标为主要食物召回率不低于 85%；所有低置信项必须显式提示确认，不能静默写入为营养真值。
-- Measurement window: 首批 20 名目标用户、每人至少 10 餐，或累计 200 餐后复盘。
+- Measurement window: S3.5 先用 5 名用户 × 6 个预设任务做形成性验证；M5 再以首批 20 名目标用户、每人至少 10 餐或累计 200 餐做发布复盘。
 
 ## 3. Solution Choice
 - Recommended path: prompt-chain
@@ -23,4 +23,4 @@
 - Success standard: 用户能在约 10 秒内完成常见中餐记录，并理解结果中的不确定性来源。
 - Pause / kill signal: 200 餐测试后仍无法达到 85% 主要食物召回率，或多数记录需要超过 2 次修改，暂停照片识别并回退到文本优先。
 - Degraded fallback: AI 不可用或置信度过低时，保留原始输入，允许用户从常吃食物、标准菜谱和手动份量中完成记录。
-- Owner and review cadence: 项目负责人每两周复盘识别质量、耗时、修改次数、失败成本和 API 成本。
+- Owner and review cadence: S3.5 每个可用性切片后复跑 discovery/holdout；进入真实 provider 后由项目负责人每两周复盘识别质量、耗时、修改次数、失败成本和 API 成本。

@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "category": "compound-names",
+  "category_label": "复合菜名",
+  "provenance": {
+    "origin": "synthetic",
+    "description": "MealNote S3.5 人工编写的合成评估语料",
+    "contains_personal_data": false,
+    "label_review_status": "reviewed"
+  },
+  "portion_label_policy": {
+    "status": "heuristic",
+    "basis": "MealNote V1 份量假设与人工合理区间；只作诊断，不作营养真值或发布门"
+  },
+  "holdout_entry_ids": [
+    "compound-002",
+    "compound-008",
+    "compound-010"
+  ],
+  "entries": [
+    {
+      "id": "compound-001",
+      "input_text": "一碗糯米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "糯米饭",
+          "mention": "糯米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "S2 回归：不得降级为 米饭"
+    },
+    {
+      "id": "compound-002",
+      "input_text": "吃了蛋炒饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "蛋炒饭",
+          "mention": "蛋炒饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            350,
+            450
+          ]
+        }
+      ],
+      "notes": "catalog 外"
+    },
+    {
+      "id": "compound-003",
+      "input_text": "一份排骨饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "排骨饭",
+          "mention": "排骨饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            550
+          ]
+        }
+      ],
+      "notes": "内含 排骨"
+    },
+    {
+      "id": "compound-004",
+      "input_text": "牛肉面一碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "牛肉面",
+          "mention": "牛肉面",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            550
+          ]
+        }
+      ],
+      "notes": "内含 面"
+    },
+    {
+      "id": "compound-005",
+      "input_text": "点了番茄炒蛋盖饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "番茄炒蛋盖饭",
+          "mention": "番茄炒蛋盖饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            600
+          ]
+        }
+      ],
+      "notes": "内含 番茄炒蛋"
+    },
+    {
+      "id": "compound-006",
+      "input_text": "水饺和蒸饺各一份",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "饺子",
+          "mention": "水饺",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        },
+        {
+          "identity": "蒸饺",
+          "mention": "蒸饺",
+          "occurrence": 1,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "水饺=alias；蒸饺 catalog 外"
+    },
+    {
+      "id": "compound-007",
+      "input_text": "半碗糯米饭以及一碗米饭",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "糯米饭",
+          "mention": "糯米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        },
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 2,
+          "expected_grams_range": [
+            180,
+            220
+          ]
+        }
+      ],
+      "notes": "S2 核心对抗用例"
+    },
+    {
+      "id": "compound-008",
+      "input_text": "蛋炒米饭一碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "蛋炒米饭",
+          "mention": "蛋炒米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            350,
+            450
+          ]
+        }
+      ],
+      "notes": "S2 回归：内含米饭但不得静默提升为米饭"
+    },
+    {
+      "id": "compound-009",
+      "input_text": "米饭和糯米饭各半碗",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "米饭",
+          "mention": "米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        },
+        {
+          "identity": "糯米饭",
+          "mention": "糯米饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            90,
+            110
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compound-010",
+      "input_text": "红烧排骨饭一份",
+      "source": "text",
+      "expected_items": [
+        {
+          "identity": "红烧排骨饭",
+          "mention": "红烧排骨饭",
+          "occurrence": 1,
+          "expected_grams_range": [
+            450,
+            600
+          ]
+        }
+      ],
+      "notes": "内含红烧排骨但整体是复合餐"
+    }
+  ]
+}

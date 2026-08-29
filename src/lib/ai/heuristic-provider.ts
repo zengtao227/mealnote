@@ -116,7 +116,7 @@ const SURFACE_LEFT_STOP_CHARS: Set<string> = new Set([
   "串",
 ]);
 
-const KNOWN_MENTION_JOINERS: string[] = [
+export const KNOWN_MENTION_JOINERS: readonly string[] = [
   "以及",
   "还有",
   "并且",

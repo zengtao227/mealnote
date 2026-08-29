@@ -634,6 +634,8 @@ export function measureMealCorpus(
       engine_digest: digestFiles([
         "src/lib/ai/heuristic-provider.ts",
         "src/lib/ai/meal-analysis-schema.ts",
+        "src/lib/nutrition/catalog-collision-regressions.ts",
+        "src/lib/nutrition/catalog-integrity.ts",
         "src/lib/nutrition/food-database.ts",
       ]),
       corpus_digest: corpus.corpus_digest,

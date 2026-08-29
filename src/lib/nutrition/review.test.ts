@@ -5,6 +5,7 @@ import {
   applyNutritionItemEdit,
   assertNutritionItemsReady,
   createNutritionInputItem,
+  createUserAddedNutritionItem,
   getNutritionFieldProvenance,
   NutritionConfirmationError,
 } from "@/lib/nutrition/review";
@@ -63,5 +64,31 @@ describe("nutrition review state", () => {
       estimated_grams: "analysis",
       oil_level: "user",
     });
+  });
+
+  it("creates a user-added catalog item without manufacturing recognition authority", () => {
+    const added = createUserAddedNutritionItem("西红柿炒鸡蛋");
+
+    expect(added).toMatchObject({
+      food_name: "番茄炒蛋",
+      estimated_grams: 150,
+      oil_level: "unknown",
+      confidence: 0,
+      needs_confirmation: true,
+      confirmation_acknowledged: false,
+      review_origin: "user-added",
+    });
+    expect(getNutritionFieldProvenance(added)).toEqual({
+      food_name: "user",
+      estimated_grams: "review-derived",
+      oil_level: "review-derived",
+    });
+    expect(() => assertNutritionItemsReady([added])).toThrow(NutritionConfirmationError);
+  });
+
+  it("rejects user-added free text outside the reviewed catalog", () => {
+    expect(() => createUserAddedNutritionItem("妈妈的拿手菜")).toThrow(
+      "只能从 MealNote 已审核食物库中补充食物。",
+    );
   });
 });

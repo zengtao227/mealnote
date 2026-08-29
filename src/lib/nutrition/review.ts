@@ -4,7 +4,10 @@ import {
   type MealItemAnalysis,
   type OilLevel,
 } from "@/lib/ai/meal-analysis-schema";
-import { resolveFoodProfile } from "@/lib/nutrition/food-database";
+import {
+  resolveFoodProfile,
+  type MatchedFoodProfileResolution,
+} from "@/lib/nutrition/food-database";
 
 export const editableNutritionFieldSchema = z.enum([
   "food_name",
@@ -21,6 +24,7 @@ export const nutritionInputItemSchema = mealItemAnalysisSchema
     confirmation_acknowledged: z.boolean(),
     edited_fields: z.array(editableNutritionFieldSchema).max(3),
     review_metadata_basis: z.literal("client-reported"),
+    review_origin: z.enum(["analysis", "user-added"]).default("analysis"),
   })
   .strict();
 
@@ -54,6 +58,32 @@ export function createNutritionInputItem(item: MealItemAnalysis): NutritionInput
     confirmation_acknowledged: !item.needs_confirmation,
     edited_fields: [],
     review_metadata_basis: "client-reported",
+    review_origin: "analysis",
+  };
+}
+
+export function createUserAddedNutritionItem(foodName: string): NutritionInputItem {
+  const resolution = resolveFoodProfile(foodName);
+  if (resolution.status !== "matched") {
+    throw new Error("只能从 MealNote 已审核食物库中补充食物。");
+  }
+
+  const matchedResolution: MatchedFoodProfileResolution = resolution;
+  const { profile } = matchedResolution;
+  return {
+    food_name: profile.canonical_name,
+    portion_text: `${profile.default_grams} 克（食物库起始份量）`,
+    estimated_grams: profile.default_grams,
+    oil_level: profile.kind === "recipe" ? "unknown" : "none",
+    confidence: 0,
+    source: "text",
+    type: profile.kind,
+    assumptions: ["起始份量来自 MealNote 食物库默认值，需要明确确认"],
+    needs_confirmation: true,
+    confirmation_acknowledged: false,
+    edited_fields: ["food_name"],
+    review_metadata_basis: "client-reported",
+    review_origin: "user-added",
   };
 }
 
@@ -146,6 +176,13 @@ export function getNutritionFieldProvenance(
   item: NutritionInputItem,
 ): NutritionFieldProvenance {
   const editedFields: Set<EditableNutritionField> = new Set(item.edited_fields);
+  if (item.review_origin === "user-added") {
+    return {
+      food_name: "user",
+      estimated_grams: editedFields.has("estimated_grams") ? "user" : "review-derived",
+      oil_level: editedFields.has("oil_level") ? "user" : "review-derived",
+    };
+  }
   return {
     food_name: editedFields.has("food_name") ? "user" : "analysis",
     estimated_grams: editedFields.has("estimated_grams") ? "user" : "analysis",

@@ -159,11 +159,15 @@ export function calculateNutrition(items: NutritionInputItem[]): NutritionResult
     }),
     { kcal: 0, protein: 0, fat: 0, carbs: 0 },
   );
-  const recognitionConfidence: number =
-    calculatedItems.reduce(
-      (sum: number, item: CalculatedMealItem) => sum + item.recognition_confidence,
+  const analyzedItems: NutritionInputItem[] = items.filter(
+    (item: NutritionInputItem) => item.review_origin === "analysis",
+  );
+  const recognitionConfidence: number = analyzedItems.length === 0
+    ? 0
+    : analyzedItems.reduce(
+      (sum: number, item: NutritionInputItem) => sum + item.confidence,
       0,
-    ) / calculatedItems.length;
+    ) / analyzedItems.length;
   const hasReviewChanges: boolean = calculatedItems.some((item: CalculatedMealItem) =>
     Object.values(item.field_provenance).some((source) => source !== "analysis"),
   );

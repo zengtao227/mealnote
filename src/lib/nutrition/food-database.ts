@@ -45,6 +45,12 @@ export type FoodProfileResolution =
   | UnmatchedFoodProfileResolution
   | AmbiguousFoodProfileResolution;
 
+export interface FoodProfileSearchResult {
+  profile: FoodProfile;
+  matched_name: string;
+  matched_by: "canonical_name" | "alias";
+}
+
 export const FOOD_PROFILES: FoodProfile[] = [
   {
     canonical_name: "米饭",
@@ -148,6 +154,90 @@ export const FOOD_PROFILES: FoodProfile[] = [
 
 function normalizeFoodName(foodName: string): string {
   return foodName.normalize("NFKC").trim().toLowerCase();
+}
+
+function getSearchMatchRank(
+  normalizedName: string,
+  normalizedQuery: string,
+  matchedBy: FoodProfileSearchResult["matched_by"],
+): number | undefined {
+  if (normalizedQuery.length === 0) {
+    return matchedBy === "canonical_name" ? 0 : undefined;
+  }
+  if (normalizedName === normalizedQuery) {
+    return 0;
+  }
+  if (normalizedName.startsWith(normalizedQuery)) {
+    return 1;
+  }
+  if (normalizedName.includes(normalizedQuery)) {
+    return 2;
+  }
+  return undefined;
+}
+
+export function searchFoodProfiles(
+  query: string,
+  limit: number = 8,
+): FoodProfileSearchResult[] {
+  const normalizedQuery: string = normalizeFoodName(query);
+  const boundedLimit: number = Number.isFinite(limit)
+    ? Math.max(0, Math.min(20, Math.floor(limit)))
+    : 0;
+  if (boundedLimit === 0) {
+    return [];
+  }
+
+  const rankedResults: Array<FoodProfileSearchResult & { rank: number }> = [];
+  for (const profile of FOOD_PROFILES) {
+    const searchableNames: Array<{
+      value: string;
+      matched_by: FoodProfileSearchResult["matched_by"];
+    }> = [
+      { value: profile.canonical_name, matched_by: "canonical_name" },
+      ...profile.aliases.map((alias: string) => ({ value: alias, matched_by: "alias" as const })),
+    ];
+
+    let bestMatch:
+      | { value: string; matched_by: FoodProfileSearchResult["matched_by"]; rank: number }
+      | undefined;
+    for (const name of searchableNames) {
+      const normalizedName: string = normalizeFoodName(name.value);
+      const rank: number | undefined = getSearchMatchRank(
+        normalizedName,
+        normalizedQuery,
+        name.matched_by,
+      );
+      if (rank === undefined || (bestMatch && rank >= bestMatch.rank)) {
+        continue;
+      }
+      bestMatch = { ...name, rank };
+    }
+
+    if (bestMatch) {
+      rankedResults.push({
+        profile,
+        matched_name: bestMatch.value,
+        matched_by: bestMatch.matched_by,
+        rank: bestMatch.rank,
+      });
+    }
+  }
+
+  return rankedResults
+    .sort(
+      (left, right) =>
+        left.rank - right.rank ||
+        left.profile.canonical_name.localeCompare(right.profile.canonical_name, "zh-CN"),
+    )
+    .slice(0, boundedLimit)
+    .map(
+      (result): FoodProfileSearchResult => ({
+        profile: result.profile,
+        matched_name: result.matched_name,
+        matched_by: result.matched_by,
+      }),
+    );
 }
 
 export function resolveFoodProfile(foodName: string): FoodProfileResolution {

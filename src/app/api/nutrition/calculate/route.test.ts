@@ -4,6 +4,7 @@ import { POST } from "@/app/api/nutrition/calculate/route";
 import {
   acknowledgeNutritionItem,
   createNutritionInputItem,
+  createUserAddedNutritionItem,
 } from "@/lib/nutrition/review";
 
 const riceAnalysis: MealItemAnalysis = {
@@ -138,5 +139,36 @@ describe("POST /api/nutrition/calculate", () => {
     const response = await POST(nutritionRequest([withoutBasis]));
 
     expect(response.status).toBe(400);
+  });
+
+  it("accepts an explicitly confirmed user-added catalog item", async () => {
+    const confirmed = acknowledgeNutritionItem(createUserAddedNutritionItem("番茄炒蛋"));
+
+    const response = await POST(nutritionRequest([confirmed]));
+    const body = (await response.json()) as {
+      nutrition?: {
+        totals: { kcal: number };
+        items: Array<{ field_provenance: Record<string, string> }>;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(body.nutrition?.totals.kcal).toBe(180);
+    expect(body.nutrition?.items[0].field_provenance).toEqual({
+      food_name: "user",
+      estimated_grams: "review-derived",
+      oil_level: "review-derived",
+    });
+  });
+
+  it("keeps compatibility with reviewed analysis payloads created before review_origin", async () => {
+    const legacyReviewedItem: Record<string, unknown> = {
+      ...createNutritionInputItem(riceAnalysis),
+    };
+    delete legacyReviewedItem.review_origin;
+
+    const response = await POST(nutritionRequest([legacyReviewedItem]));
+
+    expect(response.status).toBe(200);
   });
 });

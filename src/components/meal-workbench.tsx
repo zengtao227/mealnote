@@ -14,10 +14,19 @@ import {
   Plus,
   RotateCcw,
   Save,
+  Search,
   Sparkles,
   Utensils,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { InputSource, MealAnalysis, OilLevel } from "@/lib/ai/meal-analysis-schema";
 import type { NutritionResult } from "@/lib/nutrition/engine";
 import { RequestRevisionGuard, type RequestRevisionToken } from "@/lib/nutrition/request-guard";
@@ -25,10 +34,15 @@ import {
   acknowledgeNutritionItem,
   applyNutritionItemEdit,
   createNutritionInputItem,
+  createUserAddedNutritionItem,
   type EditableNutritionField,
   type EditableNutritionItemUpdates,
   type NutritionInputItem,
 } from "@/lib/nutrition/review";
+import {
+  searchFoodProfiles,
+  type FoodProfileSearchResult,
+} from "@/lib/nutrition/food-database";
 import {
   localPersistenceErrorMessage,
   readLocalProfileName,
@@ -111,8 +125,29 @@ function formatEditedFields(fields: EditableNutritionField[]): string {
   return fields.map((field: EditableNutritionField) => EDITED_FIELD_LABELS[field]).join("、");
 }
 
+function ReviewEditNote({ item }: { item: NutritionInputItem }): ReactNode {
+  const editedFields: EditableNutritionField[] = item.review_origin === "user-added"
+    ? item.edited_fields.filter((field: EditableNutritionField) => field !== "food_name")
+    : item.edited_fields;
+  if (editedFields.length === 0) {
+    return null;
+  }
+  const message: string = item.review_origin === "user-added"
+    ? `你已调整：${formatEditedFields(editedFields)}。`
+    : `用户已修改：${formatEditedFields(editedFields)}；原识别假设已清除。`;
+  return (
+    <p className="assumption">
+      <Check size={15} aria-hidden="true" />
+      {message}
+    </p>
+  );
+}
+
 export function MealWorkbench() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addMissingButtonRef = useRef<HTMLButtonElement>(null);
+  const catalogSearchInputRef = useRef<HTMLInputElement>(null);
+  const foodNameInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const analysisGuardRef = useRef<RequestRevisionGuard>(new RequestRevisionGuard());
   const calculationGuardRef = useRef<RequestRevisionGuard>(new RequestRevisionGuard());
@@ -133,6 +168,10 @@ export function MealWorkbench() {
   const [isListening, setIsListening] = useState<boolean>(false);
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [justSaved, setJustSaved] = useState<boolean>(false);
+  const [catalogSearchOpen, setCatalogSearchOpen] = useState<boolean>(false);
+  const [catalogQuery, setCatalogQuery] = useState<string>("");
+  const [catalogAddedFoodName, setCatalogAddedFoodName] = useState<string | undefined>();
+  const [focusItemIndex, setFocusItemIndex] = useState<number | undefined>();
 
   useEffect(() => {
     const loadStoredData = (): void => {
@@ -189,6 +228,32 @@ export function MealWorkbench() {
       ).length ?? 0,
     [analysis],
   );
+
+  const catalogResults: FoodProfileSearchResult[] = useMemo(
+    () => searchFoodProfiles(catalogQuery),
+    [catalogQuery],
+  );
+
+  useEffect(() => {
+    if (!catalogSearchOpen) {
+      return;
+    }
+    const frameId: number = window.requestAnimationFrame(() => {
+      catalogSearchInputRef.current?.focus();
+    });
+    return (): void => window.cancelAnimationFrame(frameId);
+  }, [catalogSearchOpen]);
+
+  useEffect(() => {
+    if (focusItemIndex === undefined || !analysis?.items[focusItemIndex]) {
+      return;
+    }
+    const frameId: number = window.requestAnimationFrame(() => {
+      foodNameInputRefs.current[focusItemIndex]?.focus();
+      setFocusItemIndex(undefined);
+    });
+    return (): void => window.cancelAnimationFrame(frameId);
+  }, [analysis, focusItemIndex]);
 
   function invalidateAnalysisRequest(): void {
     analysisGuardRef.current.invalidate();
@@ -256,6 +321,10 @@ export function MealWorkbench() {
     setJustSaved(false);
     setIsLoading(false);
     setIsListening(false);
+    setCatalogSearchOpen(false);
+    setCatalogQuery("");
+    setCatalogAddedFoodName(undefined);
+    setFocusItemIndex(undefined);
   }
 
   function loadExample(): void {
@@ -397,6 +466,9 @@ export function MealWorkbench() {
       setProvider(body.provider);
       setWarning(body.warning);
       setStage("confirm");
+      setCatalogSearchOpen(false);
+      setCatalogQuery("");
+      setCatalogAddedFoodName(undefined);
     } catch (caughtError: unknown) {
       if (!analysisGuardRef.current.isCurrent(requestToken)) {
         return;
@@ -446,6 +518,12 @@ export function MealWorkbench() {
       setError("一餐至少保留一个食物。 ");
       return;
     }
+    if (
+      analysis.items[index]?.review_origin === "user-added" &&
+      analysis.items[index]?.food_name === catalogAddedFoodName
+    ) {
+      setCatalogAddedFoodName(undefined);
+    }
     invalidateCalculation();
     setAnalysis((currentAnalysis: ReviewedMealAnalysis | undefined) => {
       if (!currentAnalysis) {
@@ -459,8 +537,59 @@ export function MealWorkbench() {
     setError(undefined);
   }
 
+  function openCatalogSearch(): void {
+    if (!analysis || analysis.items.length >= 20) {
+      setError("一餐最多记录 20 项食物。 ");
+      return;
+    }
+    setCatalogSearchOpen(true);
+    setCatalogQuery("");
+    setCatalogAddedFoodName(undefined);
+    setError(undefined);
+  }
+
+  function closeCatalogSearch(): void {
+    setCatalogSearchOpen(false);
+    setCatalogQuery("");
+    window.requestAnimationFrame(() => addMissingButtonRef.current?.focus());
+  }
+
+  function addCatalogItem(result: FoodProfileSearchResult): void {
+    if (!analysis || analysis.items.length >= 20) {
+      setError("一餐最多记录 20 项食物。 ");
+      return;
+    }
+
+    let addedItem: NutritionInputItem;
+    try {
+      addedItem = createUserAddedNutritionItem(result.profile.canonical_name);
+    } catch (caughtError: unknown) {
+      setError(caughtError instanceof Error ? caughtError.message : "无法补充这项食物。 ");
+      return;
+    }
+
+    const addedIndex: number = analysis.items.length;
+    invalidateCalculation();
+    setAnalysis((currentAnalysis: ReviewedMealAnalysis | undefined) => {
+      if (!currentAnalysis || currentAnalysis.items.length >= 20) {
+        return currentAnalysis;
+      }
+      return {
+        ...currentAnalysis,
+        items: [...currentAnalysis.items, addedItem],
+      };
+    });
+    setCatalogSearchOpen(false);
+    setCatalogQuery("");
+    setCatalogAddedFoodName(addedItem.food_name);
+    setFocusItemIndex(addedIndex);
+    setError(undefined);
+  }
+
   function returnToInput(): void {
     invalidateCalculation();
+    setCatalogSearchOpen(false);
+    setCatalogQuery("");
     setStage("input");
     setError(undefined);
   }
@@ -688,8 +817,12 @@ export function MealWorkbench() {
                   <div className="food-item-title">
                     <span>{index + 1}</span>
                     <input
+                      ref={(element: HTMLInputElement | null) => {
+                        foodNameInputRefs.current[index] = element;
+                      }}
                       aria-label={`第 ${index + 1} 项食物名称`}
                       value={item.food_name}
+                      readOnly={item.review_origin === "user-added"}
                       onChange={(event: ChangeEvent<HTMLInputElement>) => updateItem(index, { food_name: event.target.value })}
                     />
                     <button className="text-button danger" type="button" onClick={() => removeItem(index)}>移除</button>
@@ -726,20 +859,30 @@ export function MealWorkbench() {
                   {item.assumptions.length > 0 ? (
                     <p className="assumption"><AlertCircle size={15} />{item.assumptions.join("；")}</p>
                   ) : null}
-                  {item.edited_fields.length > 0 ? (
-                    <p className="assumption"><Check size={15} />用户已修改：{formatEditedFields(item.edited_fields)}；原识别假设已清除。</p>
-                  ) : null}
-                  <div className="confidence-line">
-                    <span>原始识别把握</span>
-                    <meter min={0} max={1} low={0.55} high={0.8} optimum={1} value={item.confidence} />
-                    <strong>{Math.round(item.confidence * 100)}%</strong>
-                  </div>
+                  <ReviewEditNote item={item} />
+                  {item.review_origin === "user-added" ? (
+                    <p className="catalog-origin">
+                      <Check size={15} aria-hidden="true" />
+                      由你从 MealNote 食物库补充，不计作 AI 识别结果。
+                    </p>
+                  ) : (
+                    <div className="confidence-line">
+                      <span>原始识别把握</span>
+                      <meter min={0} max={1} low={0.55} high={0.8} optimum={1} value={item.confidence} />
+                      <strong>{Math.round(item.confidence * 100)}%</strong>
+                    </div>
+                  )}
                   {item.needs_confirmation ? (
                     item.confirmation_acknowledged ? (
                       <InlineMessage tone="success" message="这一项已明确确认。再次修改会要求重新确认。" />
                     ) : (
                       <>
-                        <InlineMessage tone="warning" message="识别认为这一项存在关键不确定性；必须明确确认后才能计算。" />
+                        <InlineMessage
+                          tone="warning"
+                          message={item.review_origin === "user-added"
+                            ? "请检查食物和起始份量，并明确确认后再计算。"
+                            : "识别认为这一项存在关键不确定性；必须明确确认后才能计算。"}
+                        />
                         <button className="text-button" type="button" onClick={() => acknowledgeItem(index)}>
                           明确确认此项
                         </button>
@@ -749,6 +892,81 @@ export function MealWorkbench() {
                 </article>
               ))}
             </div>
+            <div className="catalog-recovery">
+              {!catalogSearchOpen ? (
+                <button
+                  ref={addMissingButtonRef}
+                  className="secondary-button full-width"
+                  type="button"
+                  onClick={openCatalogSearch}
+                >
+                  <Plus size={19} aria-hidden="true" />
+                  新增遗漏食物
+                </button>
+              ) : (
+                <section className="catalog-search-panel" aria-labelledby="catalog-search-title">
+                  <div className="catalog-search-heading">
+                    <div>
+                      <p className="step-kicker">补回识别遗漏</p>
+                      <h3 id="catalog-search-title">从食物库中选择</h3>
+                    </div>
+                    <button className="text-button" type="button" onClick={closeCatalogSearch}>
+                      取消
+                    </button>
+                  </div>
+                  <label className="field-label" htmlFor="catalog-search-input">
+                    搜索食物或菜名
+                  </label>
+                  <div className="catalog-search-input">
+                    <Search size={18} aria-hidden="true" />
+                    <input
+                      ref={catalogSearchInputRef}
+                      id="catalog-search-input"
+                      type="search"
+                      autoComplete="off"
+                      value={catalogQuery}
+                      aria-describedby="catalog-search-help"
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        setCatalogQuery(event.target.value)
+                      }
+                    />
+                  </div>
+                  <p className="catalog-search-help" id="catalog-search-help">
+                    只能选择已有审核条目；搜索文字本身不会变成营养数据。
+                  </p>
+                  {catalogResults.length > 0 ? (
+                    <ul className="catalog-results" aria-label="食物库搜索结果">
+                      {catalogResults.map((result: FoodProfileSearchResult) => (
+                        <li key={result.profile.canonical_name}>
+                          <button type="button" onClick={() => addCatalogItem(result)}>
+                            <span>
+                              <strong>{result.profile.canonical_name}</strong>
+                              <small>
+                                {result.profile.kind === "recipe" ? "标准菜谱" : "食物条目"}
+                                {result.matched_by === "alias"
+                                  ? ` · 匹配“${result.matched_name}”`
+                                  : ""}
+                              </small>
+                            </span>
+                            <Plus size={18} aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="catalog-empty" role="status">
+                      目前食物库里没有匹配项。请换一个更明确的名称；本轮不会用自由文本创建营养条目。
+                    </p>
+                  )}
+                </section>
+              )}
+            </div>
+            {catalogAddedFoodName ? (
+              <InlineMessage
+                tone="success"
+                message={`已补充${catalogAddedFoodName}；请检查起始份量并明确确认。`}
+              />
+            ) : null}
             {error ? <InlineMessage tone="error" message={error} /> : null}
             <button
               className="primary-button full-width"
@@ -797,7 +1015,7 @@ export function MealWorkbench() {
                     <li key={`${item.food_name}-${index}`}>
                       <strong>{item.food_name} → {item.matched_profile_name}</strong>
                       <span>
-                        {item.estimated_grams}g · {hasReviewChanges ? "客户端报告含用户修改/审查派生" : "客户端报告识别值未修改"} · {item.source_ref}
+                        {item.estimated_grams}g · {hasReviewChanges ? "客户端报告含用户补录、修改或审查派生" : "客户端报告识别值未修改"} · {item.source_ref}
                       </span>
                     </li>
                   );

@@ -123,6 +123,23 @@ describe("calculateNutrition", () => {
     expect(result.totals.kcal).toBe(260);
   });
 
+  it("calculates cooked glutinous rice from its reviewed table values", () => {
+    const added = acknowledgeNutritionItem(createUserAddedNutritionItem("糯米饭"));
+    const result = calculateNutrition([{ ...added, estimated_grams: 100 }]);
+
+    expect(result.totals).toEqual({
+      kcal: 188,
+      protein: 3.5,
+      fat: 0.5,
+      carbs: 43.9,
+    });
+    expect(result.items[0]).toMatchObject({
+      matched_profile_name: "糯米饭",
+      matched_by: "canonical_name",
+      source_type: "trusted-table",
+    });
+  });
+
   it("does not treat a user-added item as a zero-confidence AI recognition", () => {
     const analyzed = createNutritionInputItem(riceAnalysis);
     const added = acknowledgeNutritionItem(createUserAddedNutritionItem("红烧排骨"));

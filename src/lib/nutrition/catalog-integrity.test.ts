@@ -43,9 +43,12 @@ function createRegression(collision: CatalogSubstringCollision): CatalogSubstrin
 }
 
 describe("food profile catalog integrity", () => {
-  it("keeps the current production catalog collision-free and covered", () => {
-    expect(findCatalogSubstringCollisions(FOOD_PROFILES)).toEqual([]);
-    expect(CATALOG_SUBSTRING_REGRESSIONS).toEqual([]);
+  it("keeps every current production substring collision exactly covered", () => {
+    const collisions: CatalogSubstringCollision[] = findCatalogSubstringCollisions(FOOD_PROFILES);
+
+    expect(collisions.map(catalogSubstringCollisionKey)).toEqual(
+      CATALOG_SUBSTRING_REGRESSIONS.map(catalogSubstringCollisionKey),
+    );
     expect(() =>
       assertFoodProfileCatalogIntegrity(FOOD_PROFILES, CATALOG_SUBSTRING_REGRESSIONS),
     ).not.toThrow();
@@ -184,6 +187,10 @@ describe("catalog substring regression registry", () => {
           100,
           100,
         ]);
+        expect(
+          shorterFirstAnalysis.items.every((item): boolean => item.needs_confirmation),
+          `${key}: unenumerated connector remains confirmation-gated`,
+        ).toBe(true);
         const longerFirstInput: string =
           `${regression.longer.name}100克` +
           `${regression.unenumerated_connector}${regression.shorter.name}100克`;
@@ -207,6 +214,10 @@ describe("catalog substring regression registry", () => {
           100,
           100,
         ]);
+        expect(
+          longerFirstAnalysis.items.every((item): boolean => item.needs_confirmation),
+          `${key}: reverse unenumerated connector remains confirmation-gated`,
+        ).toBe(true);
       },
     );
   });

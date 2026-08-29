@@ -76,6 +76,48 @@ describe("S3.5 meal corpus baseline", () => {
     expect(adversarialBaseline.overall.omitted_items).toBe(1);
   });
 
+  it("counts a catalog-supported omission as recoverable only after analysis succeeds", () => {
+    const adversarialEntry = corpus.entries.find((entry) => entry.id === "compound-007");
+    if (!adversarialEntry) {
+      throw new Error("compound-007 fixture is required for the recovery regression");
+    }
+    const recognizedPlainRice: MealItemAnalysis = {
+      food_name: "米饭",
+      portion_text: "一碗米饭",
+      estimated_grams: 200,
+      oil_level: "none",
+      confidence: 0.9,
+      source: "text",
+      type: "food",
+      assumptions: ["recovery harness fixture"],
+      needs_confirmation: false,
+    };
+    const successfulBaseline = measureMealCorpus(
+      { ...corpus, entries: [adversarialEntry] },
+      () => [recognizedPlainRice],
+    );
+
+    expect(successfulBaseline.measurements[0]).toMatchObject({
+      analysis_failed: false,
+      omitted_identities: ["糯米饭"],
+      catalog_gap_identities: [],
+      current_ui_recoverable: true,
+      minimum_review_actions: 2,
+    });
+
+    const failedBaseline = measureMealCorpus(
+      { ...corpus, entries: [adversarialEntry] },
+      () => {
+        throw new Error("analysis failed");
+      },
+    );
+    expect(failedBaseline.measurements[0]).toMatchObject({
+      analysis_failed: true,
+      current_ui_recoverable: false,
+    });
+    expect(failedBaseline.measurements[0].minimum_review_actions).toBeUndefined();
+  });
+
   it("renders a deterministic checked-in baseline report", () => {
     if (process.env.UPDATE_MEAL_CORPUS_BASELINE === "1") {
       writeFileSync(REPORT_PATH, renderedReport, "utf8");

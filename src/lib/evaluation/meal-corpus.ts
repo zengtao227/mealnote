@@ -487,7 +487,10 @@ function measureEntry(
   const omittedItems: number = omittedExpectedItems.length;
   const catalogCoveredItems: number = specificExpectedItems - catalogGapItems.length;
   const currentUiRecoverable: boolean =
-    omittedItems === 0 && catalogCoveredItems === entry.expected_items.length;
+    !analysisFailed && catalogCoveredItems === entry.expected_items.length;
+  if (currentUiRecoverable) {
+    minimumReviewActions += omittedItems * 2;
+  }
 
   return {
     id: entry.id,
@@ -770,9 +773,9 @@ export function renderMealCorpusBaseline(baseline: MealCorpusBaseline): string {
 1. Align from \`portion_text\` evidence before looking at resolved canonical identity.
 2. Prefer the longest unmatched mention, so a nested \`米饭\` cannot steal a \`糯米饭\` occurrence.
 3. Repeated identical mentions pair in occurrence order; zero or genuinely ambiguous evidence matches remain unaligned.
-4. An expected item without a pair is an omission. The current UI cannot add it, so the meal is not currently recoverable.
+4. An expected item without a pair is an omission. After S3.5-B, an analyzed meal remains recoverable only when every omission has an exact catalog identity that the user can add; an analysis failure or any broad/unsupported identity remains unrecoverable.
 5. Catalog coverage is measured independently from provider extraction by resolving the ground-truth identity.
-6. Minimum review actions are reported only for currently recoverable meals and count select/rename, acknowledgement, and deletion. They exclude heuristic gram-range edits.
+6. Minimum review actions are reported only for currently recoverable meals and count select/rename, acknowledgement, deletion, and two actions for each catalog-supported omission (add/select plus explicit confirmation). They exclude heuristic gram-range edits.
 7. Portion range agreement is diagnostic only: ${overall.portion_in_range_items}/${overall.portion_diagnostic_items} aligned items (${percentage(overall.portion_in_range_items, overall.portion_diagnostic_items)}).
 
 ## By split

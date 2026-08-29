@@ -25,6 +25,31 @@ describe("resolveFoodProfile", () => {
     }
   });
 
+  it("keeps plain rice and glutinous rice as distinct exact authorities", () => {
+    const plainRice = resolveFoodProfile("米饭");
+    const glutinousRice = resolveFoodProfile("糯米饭");
+
+    expect(plainRice.status).toBe("matched");
+    expect(glutinousRice.status).toBe("matched");
+    if (plainRice.status === "matched" && glutinousRice.status === "matched") {
+      expect(plainRice.profile.canonical_name).toBe("米饭");
+      expect(glutinousRice.profile.canonical_name).toBe("糯米饭");
+      expect(glutinousRice.profile).toMatchObject({
+        kcal_per_100g: 188,
+        protein_per_100g: 3.5,
+        fat_per_100g: 0.5,
+        carbs_per_100g: 43.9,
+        source_type: "trusted-table",
+        source_ref:
+          "日本食品標準成分表（八訂）増補2023年，食品番号01154，精白もち米・炊飯：https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=1_01154_7",
+      });
+    }
+  });
+
+  it("does not authorize unreviewed regional glutinous-rice aliases", () => {
+    expect(resolveFoodProfile("江米饭")).toEqual({ status: "unmatched" });
+  });
+
   it("does not authorize a recipe variant through substring matching", () => {
     expect(resolveFoodProfile("蒜香排骨")).toEqual({ status: "unmatched" });
   });
@@ -57,6 +82,13 @@ describe("searchFoodProfiles", () => {
       matched_by: "alias",
       profile: { canonical_name: "番茄炒蛋" },
     });
+  });
+
+  it("discovers the new canonical glutinous-rice entry without changing exact authority", () => {
+    const results = searchFoodProfiles("糯米");
+
+    expect(results.map((result) => result.profile.canonical_name)).toEqual(["糯米饭"]);
+    expect(resolveFoodProfile("糯米")).toEqual({ status: "unmatched" });
   });
 
   it("returns no addable result for an unknown query", () => {

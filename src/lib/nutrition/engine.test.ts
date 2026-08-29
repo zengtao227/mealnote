@@ -8,6 +8,7 @@ import {
   acknowledgeNutritionItem,
   applyNutritionItemEdit,
   createNutritionInputItem,
+  createUserAddedNutritionItem,
   NutritionConfirmationError,
 } from "@/lib/nutrition/review";
 
@@ -101,6 +102,33 @@ describe("calculateNutrition", () => {
     expect(lowConfidence.items[0].recognition_confidence).toBe(0);
     expect(highConfidence.items[0].recognition_confidence).toBe(1);
     expect(lowConfidence.recognition_confidence_verification).toBe("client-reported");
+  });
+
+  it("calculates a confirmed user-added item from the server catalog only", () => {
+    const added = createUserAddedNutritionItem("红烧排骨");
+    const confirmed = acknowledgeNutritionItem(added);
+    const result = calculateNutrition([confirmed]);
+
+    expect(result.items[0]).toMatchObject({
+      matched_profile_name: "红烧排骨",
+      estimated_grams: 100,
+      oil_level: "unknown",
+      recognition_confidence: 0,
+      field_provenance: {
+        food_name: "user",
+        estimated_grams: "review-derived",
+        oil_level: "review-derived",
+      },
+    });
+    expect(result.totals.kcal).toBe(260);
+  });
+
+  it("does not treat a user-added item as a zero-confidence AI recognition", () => {
+    const analyzed = createNutritionInputItem(riceAnalysis);
+    const added = acknowledgeNutritionItem(createUserAddedNutritionItem("红烧排骨"));
+
+    expect(calculateNutrition([analyzed, added]).recognition_confidence).toBe(0.9);
+    expect(calculateNutrition([added]).recognition_confidence).toBe(0);
   });
 
 });

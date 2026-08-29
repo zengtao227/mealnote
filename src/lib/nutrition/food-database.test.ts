@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveFoodProfile } from "@/lib/nutrition/food-database";
+import {
+  resolveFoodProfile,
+  searchFoodProfiles,
+} from "@/lib/nutrition/food-database";
 
 describe("resolveFoodProfile", () => {
   it("matches an exact canonical name", () => {
@@ -34,5 +37,34 @@ describe("resolveFoodProfile", () => {
 
   it("leaves unknown home recipes unresolved instead of returning a demo fallback", () => {
     expect(resolveFoodProfile("妈妈的拿手菜")).toEqual({ status: "unmatched" });
+  });
+});
+
+describe("searchFoodProfiles", () => {
+  it("finds canonical names without granting fuzzy resolution authority", () => {
+    const results = searchFoodProfiles("排骨");
+
+    expect(results.map((result) => result.profile.canonical_name)).toEqual(["红烧排骨"]);
+    expect(resolveFoodProfile("排骨")).toEqual({ status: "unmatched" });
+  });
+
+  it("uses curated aliases for discovery and returns the canonical profile", () => {
+    const results = searchFoodProfiles("西红柿");
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      matched_name: "西红柿炒鸡蛋",
+      matched_by: "alias",
+      profile: { canonical_name: "番茄炒蛋" },
+    });
+  });
+
+  it("returns no addable result for an unknown query", () => {
+    expect(searchFoodProfiles("妈妈的拿手菜")).toEqual([]);
+  });
+
+  it("bounds empty-query discovery results", () => {
+    expect(searchFoodProfiles("", 3)).toHaveLength(3);
+    expect(searchFoodProfiles("", 0)).toEqual([]);
   });
 });

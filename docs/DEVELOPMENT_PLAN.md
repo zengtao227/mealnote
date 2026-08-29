@@ -1,8 +1,8 @@
 # MealNote 开发计划
 
 **目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。
-**当前阶段：** S0–S3 已完成并合并；CI 已上线；S3.5-A（synthetic text corpus + heuristic baseline）正在形成候选，S4/S5 尚未开始。
-**最后复核：** 2026-08-27
+**当前阶段：** S0–S3 与 S3.5-A 已完成并合并；CI 已上线；S3.5-B（新增遗漏项 + catalog 搜索）正在形成候选，S4/S5 尚未开始。
+**最后复核：** 2026-08-28
 **工作方式：** 垂直切片、每步可运行、每个不确定性都保留回退；不为了“生产感”提前引入复杂基础设施。
 
 ## 1. 交付原则
@@ -204,7 +204,7 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 
 **残余风险（不阻塞 S3，必须带到 S4/S5）：** 单请求最多仍可能产生约 64 MB raw bitmap，3 秒 `sharp.timeout()` 只约束单请求解码、不约束并发；localStorage 不是防篡改存储。因此 Auth、per-user 限额、资源隔离和真实 OpenAI key 公开部署的硬门继续保留。
 
-### S3.5-A — 食物解析语料与基线（当前候选，未合并）
+### S3.5-A — 食物解析语料与基线（已合并 PR #10）
 
 - [x] 9 类 synthetic/no-PII text corpus，每类 10 餐，共 90 餐 / 112 个 expected food mention；
 - [x] 每类冻结 7 discovery / 3 holdout，catalog 选品不得使用 holdout；
@@ -212,9 +212,22 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 - [x] 可复用 Node 22 baseline harness，分开报告 extraction、catalog coverage、silent wrong、omission 和当前 UI recoverability；
 - [x] 对齐使用原文 evidence、最长 mention 优先，重复同名按 occurrence 顺序；包含防止 `糯米饭` 错误 trusted `米饭` 被配给另一正常米饭的 harness 自测；
 - [x] V1 candidate：extraction recall 58.9%，specific-identity catalog coverage 49.5%，当前 UI 可恢复 meal 41.1%，silent wrong / unattributed trusted candidate 均为 0；
+- [x] 复用 Node 22 CI 验证并合并为 `d46ccc810e990e0b3bf163416560f49d1cfe57cb`。
+
+**边界：** 这是 synthetic text/heuristic 决策基线，不证明真实用户分布、图片/语音/OpenAI 质量、营养准确性或“10 秒”达标。份量范围只作诊断。任何 catalog 变更前还必须完成碰撞审计与 nutrition-source review。
+
+### S3.5-B — 新增遗漏项与 catalog 搜索（当前候选）
+
+- [x] 确认页增加渐进式“新增遗漏食物”入口，保持原分析与其他 review state 不变；
+- [x] 搜索仅覆盖现有 `FOOD_PROFILES` canonical name 与 curated alias；部分字符串只能用于发现，选中后仍重新执行 exact resolver；
+- [x] 未知查询没有自由文本添加入口，不会获得 nutrition authority；
+- [x] 用户补录项明确标为 `user-added`，AI recognition confidence 为 0，默认克重/用油明确标为客户端 `review-derived`；
+- [x] 补录项必须明确确认后才能计算；添加、修改、移除继续失效旧 calculation request/result；
+- [x] 沿用现有 V1 persistence provenance 枚举，不扩张 localStorage schema；用户补录默认值使用已有 `review-derived`；
+- [x] 单测覆盖搜索/别名/fail-closed/确认/engine/API/persistence，真实 375 px 浏览器链路覆盖别名搜索、未知项、补录、确认、计算、移除、dark/reduced-motion 与无横向溢出；
 - [ ] 独立复审并合并本候选。
 
-**边界：** 这是 synthetic text/heuristic 决策基线，不证明真实用户分布、图片/语音/OpenAI 质量、营养准确性或“10 秒”达标。份量范围只作诊断。下一产品切片是新增遗漏项 + catalog 搜索；任何 catalog 变更前还必须完成碰撞审计与 nutrition-source review。
+**边界：** 本切片没有扩充 7 条 catalog profile，也没有把 fuzzy search、provider candidate 或客户端 metadata 提升为已验证 authority。S3.5-A 的 baseline 数字仍是 B 之前的固定回归基线；B 是否改善真人完成率必须由后续形成性测试测量。
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 
@@ -278,7 +291,7 @@ npm run build
 
 ## 8. 下一步
 
-S0–S3 已全部合并。S3.5 已被**部分批准**：当前先完成并独立复审 A1/A4 测量基础；其基线证明 authority gate 当前为 0 silent wrong，但 extraction/coverage/recoverability 仍不足。A1/A4 合并后，下一产品切片是“新增遗漏项 + catalog 搜索”，然后才允许在碰撞审计和 nutrition-source review 后做 discovery-driven 小批 catalog，并进行早期形成性真人测试。完成这段有界产品价值验证后进入 S4 Auth。
+S0–S3 与 S3.5-A 已合并。S3.5-B“新增遗漏项 + catalog 搜索”是当前候选；它先拆除 provider omission 无法补回的硬墙，但不改变 baseline、catalog 内容或服务端信任等级。B 独立复审并合并后，先把别名/canonical collision audit 固化进 CI，再依据 discovery misses 做 nutrition-source-reviewed 小批 catalog，并进行早期形成性真人测试。完成这段有界产品价值验证后进入 S4 Auth。
 
 `source_evidence` 与 OpenAI provider contract 仍是必须完成的真实模型信任门，但不阻塞 S4；它们必须在 S5 配置真实 key 前完成。
 

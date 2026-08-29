@@ -407,6 +407,12 @@ select:focus {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
 }
 
+input:read-only {
+  color: var(--color-foreground);
+  background: color-mix(in srgb, var(--color-soft) 68%, var(--color-surface));
+  cursor: default;
+}
+
 textarea {
   min-height: 126px;
   padding: 14px;
@@ -588,7 +594,7 @@ button:disabled {
 .food-list {
   display: grid;
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .food-item {
@@ -661,6 +667,21 @@ button:disabled {
   margin-top: 2px;
 }
 
+.catalog-origin {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 12px 0;
+  color: var(--color-primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.catalog-origin svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
 .confidence-line {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -673,6 +694,120 @@ button:disabled {
 .confidence-line meter {
   width: 100%;
   height: 10px;
+}
+
+.catalog-recovery {
+  margin: 0 0 18px;
+}
+
+.catalog-search-panel {
+  padding: 16px;
+  background: var(--color-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.catalog-search-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.catalog-search-heading h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.catalog-search-input {
+  position: relative;
+}
+
+.catalog-search-input svg {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  color: var(--color-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.catalog-search-input input {
+  padding-left: 42px;
+  background: var(--color-surface);
+}
+
+.catalog-search-help,
+.catalog-empty {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.catalog-search-help {
+  margin: 8px 0 12px;
+}
+
+.catalog-results {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catalog-results button {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: var(--color-foreground);
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition), background var(--transition), border-color var(--transition);
+}
+
+.catalog-results button:hover {
+  color: var(--color-primary-dark);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  border-color: var(--color-primary);
+}
+
+.catalog-results button > span,
+.catalog-results strong,
+.catalog-results small {
+  display: block;
+}
+
+.catalog-results strong {
+  font-size: 14px;
+}
+
+.catalog-results small {
+  margin-top: 2px;
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.catalog-results svg {
+  flex: 0 0 auto;
+  color: var(--color-primary-dark);
+}
+
+.catalog-empty {
+  margin: 0;
+  padding: 12px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  line-height: 1.55;
 }
 
 .range-block {

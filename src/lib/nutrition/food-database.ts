@@ -1,4 +1,9 @@
 import type { FoodKind } from "@/lib/ai/meal-analysis-schema";
+import { CATALOG_SUBSTRING_REGRESSIONS } from "@/lib/nutrition/catalog-collision-regressions";
+import {
+  assertFoodProfileCatalogIntegrity,
+  normalizeFoodProfileName,
+} from "@/lib/nutrition/catalog-integrity";
 
 export interface PortionBasis {
   bowl_grams?: number;
@@ -152,9 +157,7 @@ export const FOOD_PROFILES: FoodProfile[] = [
   },
 ];
 
-function normalizeFoodName(foodName: string): string {
-  return foodName.normalize("NFKC").trim().toLowerCase();
-}
+assertFoodProfileCatalogIntegrity(FOOD_PROFILES, CATALOG_SUBSTRING_REGRESSIONS);
 
 function getSearchMatchRank(
   normalizedName: string,
@@ -180,7 +183,7 @@ export function searchFoodProfiles(
   query: string,
   limit: number = 8,
 ): FoodProfileSearchResult[] {
-  const normalizedQuery: string = normalizeFoodName(query);
+  const normalizedQuery: string = normalizeFoodProfileName(query);
   const boundedLimit: number = Number.isFinite(limit)
     ? Math.max(0, Math.min(20, Math.floor(limit)))
     : 0;
@@ -202,7 +205,7 @@ export function searchFoodProfiles(
       | { value: string; matched_by: FoodProfileSearchResult["matched_by"]; rank: number }
       | undefined;
     for (const name of searchableNames) {
-      const normalizedName: string = normalizeFoodName(name.value);
+      const normalizedName: string = normalizeFoodProfileName(name.value);
       const rank: number | undefined = getSearchMatchRank(
         normalizedName,
         normalizedQuery,
@@ -241,14 +244,14 @@ export function searchFoodProfiles(
 }
 
 export function resolveFoodProfile(foodName: string): FoodProfileResolution {
-  const normalizedName: string = normalizeFoodName(foodName);
+  const normalizedName: string = normalizeFoodProfileName(foodName);
   if (!normalizedName) {
     return { status: "unmatched" };
   }
 
   const matches: MatchedFoodProfileResolution[] = [];
   for (const profile of FOOD_PROFILES) {
-    if (normalizeFoodName(profile.canonical_name) === normalizedName) {
+    if (normalizeFoodProfileName(profile.canonical_name) === normalizedName) {
       matches.push({
         status: "matched",
         profile,
@@ -259,7 +262,7 @@ export function resolveFoodProfile(foodName: string): FoodProfileResolution {
     }
 
     const matchedAlias: string | undefined = profile.aliases.find(
-      (alias: string) => normalizeFoodName(alias) === normalizedName,
+      (alias: string) => normalizeFoodProfileName(alias) === normalizedName,
     );
     if (matchedAlias) {
       matches.push({

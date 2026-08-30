@@ -20,3 +20,7 @@
 /coverage
 *.tsbuildinfo
 next-env.d.ts
+
+# local, pseudonymous formative-study results
+/studies/formative/s3.5-v1/results/*
+!/studies/formative/s3.5-v1/results/.gitkeep

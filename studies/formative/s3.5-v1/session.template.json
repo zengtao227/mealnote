@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "protocol_id": "s3.5-formative-v1",
+  "participant_code": "REPLACE_WITH_P001_TO_P005",
+  "rotation_id": "REPLACE_WITH_R1_TO_R5",
+  "tasks": [
+    {
+      "task_id": "F01_EXACT_RICE",
+      "duration_ms": 0,
+      "outcome": "REPLACE_WITH_saved_abandoned_OR_guardrail-rejected",
+      "actions": {
+        "identity_edits": 0,
+        "portion_edits": 0,
+        "oil_edits": 0,
+        "confirmations": 0,
+        "catalog_adds": 0,
+        "removals": 0,
+        "retries": 0
+      },
+      "issue_codes": [],
+      "authority_violation": false
+    },
+    {
+      "task_id": "F02_OIL_CONFIRMATION",
+      "duration_ms": 0,
+      "outcome": "REPLACE_WITH_saved_abandoned_OR_guardrail-rejected",
+      "actions": {
+        "identity_edits": 0,
+        "portion_edits": 0,
+        "oil_edits": 0,
+        "confirmations": 0,
+        "catalog_adds": 0,
+        "removals": 0,
+        "retries": 0
+      },
+      "issue_codes": [],
+      "authority_violation": false
+    },
+    {
+      "task_id": "F03_NESTED_RICE",
+      "duration_ms": 0,
+      "outcome": "REPLACE_WITH_saved_abandoned_OR_guardrail-rejected",
+      "actions": {
+        "identity_edits": 0,
+        "portion_edits": 0,
+        "oil_edits": 0,
+        "confirmations": 0,
+        "catalog_adds": 0,
+        "removals": 0,
+        "retries": 0
+      },
+      "issue_codes": [],
+      "authority_violation": false
+    },
+    {
+      "task_id": "F04_MISSING_ITEM",
+      "duration_ms": 0,
+      "outcome": "REPLACE_WITH_saved_abandoned_OR_guardrail-rejected",
+      "actions": {
+        "identity_edits": 0,
+        "portion_edits": 0,
+        "oil_edits": 0,
+        "confirmations": 0,
+        "catalog_adds": 0,
+        "removals": 0,
+        "retries": 0
+      },
+      "issue_codes": [],
+      "authority_violation": false
+    },
+    {
+      "task_id": "F05_BROAD_CORRECTION",
+      "duration_ms": 0,
+      "outcome": "REPLACE_WITH_saved_abandoned_OR_guardrail-rejected",
+      "actions": {
+        "identity_edits": 0,
+        "portion_edits": 0,
+        "oil_edits": 0,
+        "confirmations": 0,
+        "catalog_adds": 0,
+        "removals": 0,
+        "retries": 0
+      },
+      "issue_codes": [],
+      "authority_violation": false
+    },
+    {
+      "task_id": "F06_UNSUPPORTED_GUARDRAIL",
+      "duration_ms": 0,
+      "outcome": "REPLACE_WITH_saved_abandoned_OR_guardrail-rejected",
+      "actions": {
+        "identity_edits": 0,
+        "portion_edits": 0,
+        "oil_edits": 0,
+        "confirmations": 0,
+        "catalog_adds": 0,
+        "removals": 0,
+        "retries": 0
+      },
+      "issue_codes": [],
+      "authority_violation": false
+    }
+  ]
+}

@@ -40,7 +40,7 @@ describe("heuristic neighbor boundaries", () => {
   it("keeps punctuation directional around an embedded compound", () => {
     const result = analyze("100克米饭，糯米饭100克；200克饺子");
     expect(result.items.map((item) => item.food_name)).toEqual(["米饭", "糯米饭", "饺子"]);
-    expect(result.items.map(calculates)).toEqual([true, false, true]);
+    expect(result.items.map(calculates)).toEqual([true, true, true]);
   });
 
   it("keeps punctuation plus structured joiners occurrence-local", () => {
@@ -54,7 +54,7 @@ describe("heuristic neighbor boundaries", () => {
       "红烧排骨",
       "米饭",
     ]);
-    expect(result.items.map(calculates)).toEqual([true, false, true, true, true]);
+    expect(result.items.map(calculates)).toEqual([true, true, true, true, true]);
     expect(result.items[3].oil_level).toBe("heavy");
   });
 

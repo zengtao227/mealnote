@@ -78,7 +78,7 @@ describe("heuristic self-review regressions", () => {
     });
     expect(forward.items.map((item) => item.food_name)).toEqual(["糯米饭", "米饭"]);
     expect(forward.items.map((item) => item.estimated_grams)).toEqual([100, 200]);
-    expect(forward.items.map((item) => item.needs_confirmation)).toEqual([true, false]);
+    expect(forward.items.map((item) => item.needs_confirmation)).toEqual([false, false]);
 
     const reverse = analyzeWithHeuristics({
       text: "200克米饭以及糯米饭100克",
@@ -86,7 +86,7 @@ describe("heuristic self-review regressions", () => {
     });
     expect(reverse.items.map((item) => item.food_name)).toEqual(["米饭", "糯米饭"]);
     expect(reverse.items.map((item) => item.estimated_grams)).toEqual([200, 100]);
-    expect(reverse.items.map((item) => item.needs_confirmation)).toEqual([false, true]);
+    expect(reverse.items.map((item) => item.needs_confirmation)).toEqual([false, false]);
   });
 
   it("fails closed rather than sharing a portion across adjacent unsplit mentions", () => {
@@ -168,7 +168,7 @@ describe("heuristic self-review regressions", () => {
 
     const compound = analyzeWithHeuristics({ text: "糯米饭和饺子", source: "text" });
     expect(compound.items[0].food_name).toBe("糯米饭");
-    expect(compound.items[0].needs_confirmation).toBe(true);
+    expect(compound.items[0].needs_confirmation).toBe(false);
     expect(compound.items[1]).toMatchObject({ food_name: "饺子", needs_confirmation: false });
   });
 
@@ -189,7 +189,7 @@ describe("heuristic self-review regressions", () => {
       source: "text",
     });
     expect(reverseCompound.items.map((item) => item.food_name)).toEqual(["米饭", "糯米饭"]);
-    expect(reverseCompound.items.map((item) => item.needs_confirmation)).toEqual([false, true]);
+    expect(reverseCompound.items.map((item) => item.needs_confirmation)).toEqual([false, false]);
 
     const suffixCompound = analyzeWithHeuristics({
       text: "米饭团100克以及200克饺子",

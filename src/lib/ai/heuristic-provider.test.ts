@@ -89,7 +89,7 @@ describe("heuristic candidate vs nutrition authority", () => {
     expect(() => calculateNutrition([acknowledged])).toThrow(/未匹配到可信营养条目/);
   });
 
-  it("does not rewrite sticky-rice compound text into trusted rice authority", () => {
+  it("resolves explicit glutinous rice without falling back to plain rice authority", () => {
     const analysis = analyzeWithHeuristics({
       text: "糯米饭100克",
       source: "text",
@@ -99,10 +99,9 @@ describe("heuristic candidate vs nutrition authority", () => {
     expect(analysis.items[0]).toMatchObject({
       food_name: "糯米饭",
       estimated_grams: 100,
-      needs_confirmation: true,
+      needs_confirmation: false,
     });
-    const acknowledged = acknowledgeNutritionItem(createNutritionInputItem(analysis.items[0]));
-    expect(() => calculateNutrition([acknowledged])).toThrow(NutritionResolutionError);
+    expect(calculateNutrition([createNutritionInputItem(analysis.items[0])]).totals.kcal).toBe(188);
   });
 
   it("does not rewrite fried-rice compound text into trusted plain rice authority", () => {
@@ -136,7 +135,7 @@ describe("heuristic candidate vs nutrition authority", () => {
     expect(calculateNutrition([createNutritionInputItem(analysis.items[0])]).totals.kcal).toBe(116);
   });
 
-  it("keeps sticky rice and trusted plain rice as separate clause-bound candidates", () => {
+  it("keeps trusted glutinous rice and plain rice as separate clause-bound candidates", () => {
     const analysis = analyzeWithHeuristics({
       text: "糯米饭100克，半碗米饭",
       source: "text",
@@ -147,7 +146,7 @@ describe("heuristic candidate vs nutrition authority", () => {
       food_name: "糯米饭",
       portion_text: "糯米饭100克",
       estimated_grams: 100,
-      needs_confirmation: true,
+      needs_confirmation: false,
     });
     expect(analysis.items[1]).toMatchObject({
       food_name: "米饭",
@@ -156,10 +155,8 @@ describe("heuristic candidate vs nutrition authority", () => {
       needs_confirmation: false,
     });
 
-    const compound = acknowledgeNutritionItem(createNutritionInputItem(analysis.items[0]));
-    const trusted = createNutritionInputItem(analysis.items[1]);
-    expect(() => calculateNutrition([compound])).toThrow(NutritionResolutionError);
-    expect(calculateNutrition([trusted]).totals.kcal).toBe(116);
+    expect(calculateNutrition([createNutritionInputItem(analysis.items[0])]).totals.kcal).toBe(188);
+    expect(calculateNutrition([createNutritionInputItem(analysis.items[1])]).totals.kcal).toBe(116);
   });
 
   it("keeps trusted plain rice and fried-rice compound as separate candidates in reverse order", () => {

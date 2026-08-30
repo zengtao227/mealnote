@@ -23,7 +23,7 @@ This directory is the synthetic text corpus for the S3.5 heuristic/catalog basel
 - Provider candidates are aligned from their source-like `portion_text`, never from canonical identity first. The longest unmatched mention contained in that evidence wins, preventing `米饭` from stealing the `糯米饭` occurrence.
 - Equal longest matches fail closed unless they are repeated occurrences of the same mention; repeated identical mentions are paired in occurrence order.
 - Zero or genuinely ambiguous evidence matches remain unaligned instead of being guessed into place.
-- An expected item without an aligned provider candidate is an omission. Because the current confirmation UI cannot add an item, any such meal is currently unrecoverable.
+- An expected item without an aligned provider candidate is an omission. Since S3.5-B, an analyzed meal remains recoverable when every omission has an exact catalog identity that the user can add and explicitly confirm; analysis failures and broad or unsupported identities remain unrecoverable.
 - A wrong resolved canonical with `needs_confirmation === false` is silent wrong canonicalization and blocks catalog expansion.
 - A trusted candidate that cannot be attributed to one expected mention is also a blocker.
 

@@ -47,19 +47,24 @@ function assertCompoundAndRice(caseDefinition: CompoundCase): void {
   const trustedIndex: number = analysis.items.findIndex((item) => item.food_name === "米饭");
   expect(compoundIndex).toBeGreaterThanOrEqual(0);
   expect(trustedIndex).toBeGreaterThanOrEqual(0);
+  const compoundIsCatalogSupported: boolean = caseDefinition.compound === "糯米饭";
   expect(analysis.items[compoundIndex]).toMatchObject({
     estimated_grams: 100,
-    needs_confirmation: true,
+    needs_confirmation: !compoundIsCatalogSupported,
   });
   expect(analysis.items[trustedIndex]).toMatchObject({
     estimated_grams: 100,
     needs_confirmation: false,
   });
 
-  const compound = acknowledgeNutritionItem(
-    createNutritionInputItem(analysis.items[compoundIndex]),
-  );
-  expect(() => calculateNutrition([compound])).toThrow(NutritionResolutionError);
+  const compound = createNutritionInputItem(analysis.items[compoundIndex]);
+  if (compoundIsCatalogSupported) {
+    expect(calculateNutrition([compound]).totals.kcal).toBe(188);
+  } else {
+    expect(() =>
+      calculateNutrition([acknowledgeNutritionItem(compound)]),
+    ).toThrow(NutritionResolutionError);
+  }
   const trusted = createNutritionInputItem(analysis.items[trustedIndex]);
   expect(calculateNutrition([trusted]).totals.kcal).toBe(116);
 }

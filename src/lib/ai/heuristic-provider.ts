@@ -362,6 +362,10 @@ function mentionsOverlap(left: ProfileMention, right: ProfileMention): boolean {
   return left.start < right.end && right.start < left.end;
 }
 
+function mentionContains(outer: ProfileMention, inner: ProfileMention): boolean {
+  return outer.start <= inner.start && outer.end >= inner.end;
+}
+
 function sameProfile(left: ProfileMention, right: ProfileMention): boolean {
   return left.profile.food_name === right.profile.food_name && left.profile.kind === right.profile.kind;
 }
@@ -387,7 +391,7 @@ function findProfileMentions(
   return mentions;
 }
 
-function preferLongestOverlappingAlias(mentions: ProfileMention[]): ProfileMention[] {
+function preferLongestContainedTrustedName(mentions: ProfileMention[]): ProfileMention[] {
   const sorted: ProfileMention[] = [...mentions].sort(
     (left: ProfileMention, right: ProfileMention) =>
       left.start - right.start || right.alias.length - left.alias.length,
@@ -396,7 +400,10 @@ function preferLongestOverlappingAlias(mentions: ProfileMention[]): ProfileMenti
 
   for (const mention of sorted) {
     const overlappingIndex: number = kept.findIndex(
-      (existing: ProfileMention) => sameProfile(existing, mention) && mentionsOverlap(existing, mention),
+      (existing: ProfileMention) =>
+        (sameProfile(existing, mention) && mentionsOverlap(existing, mention)) ||
+        mentionContains(existing, mention) ||
+        mentionContains(mention, existing),
     );
     if (overlappingIndex < 0) {
       kept.push(mention);
@@ -539,7 +546,7 @@ function matchPrefixPortion(
   return separated ? { start, end: mentionStart } : undefined;
 }
 
-function matchPostfixPortion(
+function matchImmediatePostfixPortion(
   text: string,
   mentionEnd: number,
   upperBound: number,
@@ -549,10 +556,85 @@ function matchPostfixPortion(
   if (!match?.[0]) {
     return undefined;
   }
-  const end: number = mentionEnd + match[0].length;
-  return hasValidPostfixTerminator(text, mentionEnd, end, upperBound)
-    ? { start: mentionEnd, end }
+  return { start: mentionEnd, end: mentionEnd + match[0].length };
+}
+
+function matchPostfixPortion(
+  text: string,
+  mentionEnd: number,
+  upperBound: number,
+): PortionMatch | undefined {
+  const match: PortionMatch | undefined = matchImmediatePostfixPortion(
+    text,
+    mentionEnd,
+    upperBound,
+  );
+  if (!match) {
+    return undefined;
+  }
+  return hasValidPostfixTerminator(text, mentionEnd, match.end, upperBound)
+    ? match
     : undefined;
+}
+
+function findPreviousAnchor(
+  mention: ProfileMention,
+  anchors: ProfileMention[],
+): ProfileMention | undefined {
+  return anchors.findLast((anchor: ProfileMention) => anchor.end <= mention.start);
+}
+
+function findNextAnchor(
+  mention: ProfileMention,
+  anchors: ProfileMention[],
+): ProfileMention | undefined {
+  return anchors.find((anchor: ProfileMention) => anchor.start >= mention.end);
+}
+
+function getImmediatePostfixPortion(
+  text: string,
+  mention: ProfileMention,
+  anchors: ProfileMention[],
+): PortionMatch | undefined {
+  const bounds: MentionBounds = mentionNeighborBounds(mention, anchors, text.length);
+  return matchImmediatePostfixPortion(text, mention.end, bounds.upper);
+}
+
+function hasPairedPostfixBoundary(
+  text: string,
+  mention: ProfileMention,
+  anchors: ProfileMention[],
+  direction: "left" | "right",
+): boolean {
+  const currentPortion: PortionMatch | undefined = getImmediatePostfixPortion(
+    text,
+    mention,
+    anchors,
+  );
+  if (!currentPortion) {
+    return false;
+  }
+  const neighbor: ProfileMention | undefined =
+    direction === "left"
+      ? findPreviousAnchor(mention, anchors)
+      : findNextAnchor(mention, anchors);
+  if (!neighbor) {
+    return false;
+  }
+  const neighborPortion: PortionMatch | undefined = getImmediatePostfixPortion(
+    text,
+    neighbor,
+    anchors,
+  );
+  if (!neighborPortion) {
+    return false;
+  }
+  const gap: string =
+    direction === "left"
+      ? text.slice(neighborPortion.end, mention.start)
+      : text.slice(currentPortion.end, neighbor.start);
+  // Two explicit portions can isolate display spans without turning an unknown connector into trust.
+  return /\S/u.test(gap);
 }
 
 function isTrustedSpecificMention(
@@ -575,7 +657,6 @@ function isTrustedSpecificMention(
     hasLeftMention && hasStructuredLeftBoundary(text, bounds.lower, mention.start);
   const structuredRightBoundary: boolean =
     hasRightMention && hasStructuredRightBoundary(text, mention.end, bounds.upper);
-
   const leftSafe: boolean =
     mention.start === 0 ||
     prefix !== undefined ||
@@ -630,8 +711,9 @@ function extractMentionSurface(
   text: string,
   mention: ProfileMention,
   bounds: MentionBounds,
+  preserveExactProfileSurface: boolean,
 ): MentionSurface {
-  if (mention.trusted) {
+  if (mention.trusted || preserveExactProfileSurface) {
     return { name: mention.profile.food_name, start: mention.start, end: mention.end };
   }
 
@@ -684,6 +766,7 @@ function extractMentionContext(
   text: string,
   surface: MentionSurface,
   bounds: MentionBounds,
+  allowNeighborBoundPostfix: boolean,
 ): string {
   let start: number = surface.start;
   let end: number = surface.end;
@@ -691,7 +774,11 @@ function extractMentionContext(
   if (prefix) {
     start = prefix.start;
   }
-  const postfix: PortionMatch | undefined = matchPostfixPortion(text, surface.end, bounds.upper);
+  const postfix: PortionMatch | undefined =
+    matchPostfixPortion(text, surface.end, bounds.upper) ??
+    (allowNeighborBoundPostfix
+      ? matchImmediatePostfixPortion(text, surface.end, bounds.upper)
+      : undefined);
   if (postfix) {
     end = postfix.end;
   }
@@ -803,7 +890,15 @@ function mentionToCandidate(
   anchors: ProfileMention[],
 ): RecognizedCandidate {
   const bounds: MentionBounds = mentionNeighborBounds(mention, anchors, text.length);
-  const surface: MentionSurface = extractMentionSurface(text, mention, bounds);
+  const hasPairedPostfix: boolean =
+    hasPairedPostfixBoundary(text, mention, anchors, "left") ||
+    hasPairedPostfixBoundary(text, mention, anchors, "right");
+  const surface: MentionSurface = extractMentionSurface(
+    text,
+    mention,
+    bounds,
+    mention.source === "trusted-profile" && hasPairedPostfix,
+  );
   const profile: HeuristicProfile = mention.trusted
     ? mention.profile
     : {
@@ -813,7 +908,12 @@ function mentionToCandidate(
       };
   return {
     profile,
-    portion_text: extractMentionContext(text, surface, bounds),
+    portion_text: extractMentionContext(
+      text,
+      surface,
+      bounds,
+      hasPairedPostfix,
+    ),
     mention_start: mention.start,
     mention_end: mention.end,
   };
@@ -821,7 +921,7 @@ function mentionToCandidate(
 
 export function analyzeWithHeuristics(request: AnalysisRequest): MealAnalysis {
   const allTrustedProfiles: HeuristicProfile[] = FOOD_PROFILES.map(toHeuristicProfile);
-  const specificMentions: ProfileMention[] = preferLongestOverlappingAlias(
+  const specificMentions: ProfileMention[] = preferLongestContainedTrustedName(
     allTrustedProfiles.flatMap((profile: HeuristicProfile) =>
       findProfileMentions(request.text, profile, "trusted-profile"),
     ),

@@ -227,18 +227,30 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 - [x] 单测覆盖搜索/别名/fail-closed/确认/engine/API/persistence，真实 375 px 浏览器链路覆盖别名搜索、未知项、补录、确认、计算、移除、dark/reduced-motion 与无横向溢出；
 - [x] exact head `aa85f32ea1aa7200ff71850504f280b278fc0d34` 经独立复审 APPROVE，并 squash-merge 到 `main` commit `7875d8987f19268c13c32cec4582191283006d3f`。
 
-**边界：** 本切片没有扩充 7 条 catalog profile，也没有把 fuzzy search、provider candidate 或客户端 metadata 提升为已验证 authority。S3.5-A 的 baseline 数字仍是 B 之前的固定回归基线；B 是否改善真人完成率必须由后续形成性测试测量。
+**边界：** 本切片没有扩充 7 条 catalog profile，也没有把 fuzzy search、provider candidate 或客户端 metadata 提升为已验证 authority。B 是否改善真人完成率必须由后续形成性测试测量；离线 report 的 current-UI recoverability 语义在首批 catalog candidate 中才同步到 B 的补漏能力。
 
-### S3.5-C — Catalog collision audit（当前候选）
+### S3.5-C — Catalog collision audit（已合并 PR #12）
 
-- [ ] 使用与 exact resolver 相同的 NFKC / trim / lowercase 规范化规则扫描全部 canonical name 与 curated alias；
-- [ ] cross-profile exact authority collision 必须无条件 fail closed；
-- [ ] cross-profile 严格子串关系必须有一条常驻登记，并由 CI 自动执行短名/长名两个顺序与未枚举连接词回归；
-- [ ] missing、duplicate、stale regression declaration 均必须 fail closed；
-- [ ] 当前 7 条 profile 在不修改 catalog 内容或营养值的前提下通过；
-- [ ] 独立复审并合并本候选后，才允许进入 discovery-miss 驱动的小批 catalog expansion。
+- [x] 使用与 exact resolver 相同的 NFKC / trim / lowercase 规范化规则扫描全部 canonical name 与 curated alias；
+- [x] cross-profile exact authority collision 必须无条件 fail closed；
+- [x] cross-profile 严格子串关系必须有一条常驻登记，并由 CI 自动执行短名/长名两个顺序与未枚举连接词回归；
+- [x] missing、duplicate、stale regression declaration 均必须 fail closed；
+- [x] 原 7 条 profile 在不修改 catalog 内容或营养值的前提下通过；
+- [x] exact head `a683f5bdf14da283a366e8de96db44d1515f7326` 经独立复审 APPROVE，并 squash-merge 到 `main` commit `5e1b60aa600e87c7540bb73f56985b830d87fafc`。
 
 **边界：** prefix/substring 仍只用于 UI discovery；本审计不会授予 nutrition authority，也不代表任何新增 food/recipe 已通过 nutrition-source review。
+
+### S3.5-D — Discovery catalog batch 1（当前候选）
+
+- [x] 选品只使用冻结 discovery split：`糯米饭` 以 3 次 miss 成为最高频 unsupported identity；holdout 不参与选品；
+- [x] 只增加一条 plain cooked `糯米饭` profile，营养中央值逐项引用日本文部科学省食品成分数据库 2023 增补版 item 01154；
+- [x] 不添加未经证据支持的 `江米饭` 等 alias；`米饭`、`糯米饭` 保持两个独立 exact resolver authority；
+- [x] 为 `米饭 ⊂ 糯米饭` 登记首条生产 collision，并实际执行双向、未枚举连接词 mention-span 回归；`蛋炒米饭` 继续 fail closed；
+- [x] baseline corpus 与 holdout membership 不变；report 更新为 8 profiles、catalog coverage 58/111（52.3%），silent wrong / unattributed trusted candidate 均为 0；
+- [x] current-UI recoverability 定义同步 S3.5-B：成功分析后的 catalog-supported omission 可经“新增 + 明确确认”恢复，analysis failure、broad 或 unsupported identity 仍不可恢复；
+- [x] `粥`、`肥牛`、`馒头` 因 identity/成分变异或数据许可边界暂缓，不为追求数量使用不等价营养数据。
+
+**边界：** 本批不证明真实用户分布、家庭做法营养准确性、图片/语音/OpenAI 质量或“10 秒”达标；碗/默认克数与 uncertainty ratio 仍是 MealNote V1 产品假设，不冒充来源表数据。
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 

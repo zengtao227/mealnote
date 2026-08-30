@@ -72,6 +72,21 @@ export const FOOD_PROFILES: FoodProfile[] = [
     portion_basis: { bowl_grams: 200, spoon_grams: 15, bite_grams: 18 },
   },
   {
+    canonical_name: "糯米饭",
+    aliases: [],
+    kind: "food",
+    kcal_per_100g: 188,
+    protein_per_100g: 3.5,
+    fat_per_100g: 0.5,
+    carbs_per_100g: 43.9,
+    uncertainty_ratio: 0.1,
+    source_type: "trusted-table",
+    source_ref:
+      "日本食品標準成分表（八訂）増補2023年，食品番号01154，精白もち米・炊飯：https://fooddb.mext.go.jp/details/details.pl?ITEM_NO=1_01154_7",
+    default_grams: 150,
+    portion_basis: { bowl_grams: 200, spoon_grams: 15, bite_grams: 18 },
+  },
+  {
     canonical_name: "番茄炒蛋",
     aliases: ["西红柿炒鸡蛋", "番茄炒鸡蛋"],
     kind: "recipe",

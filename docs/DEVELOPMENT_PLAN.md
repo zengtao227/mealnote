@@ -1,8 +1,8 @@
 # MealNote 开发计划
 
 **目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。
-**当前阶段：** S0–S3、S3.5-A/B/C 与首批 source-reviewed catalog 已合并；形成性真人测试工具包正在形成候选，现场数据尚未采集；S4/S5 尚未开始。
-**最后复核：** 2026-08-30
+**当前阶段：** S0–S3、S3.5-A/B/C/D、形成性真人测试工具包与 OpenAI provider contract baseline 已合并；现场数据尚未采集，S4/S5 尚未开始。
+**最后复核：** 2026-08-31
 **工作方式：** 垂直切片、每步可运行、每个不确定性都保留回退；不为了“生产感”提前引入复杂基础设施。
 
 ## 1. 交付原则
@@ -253,7 +253,7 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 
 **边界：** 本批不证明真实用户分布、家庭做法营养准确性、图片/语音/OpenAI 质量或“10 秒”达标；碗/默认克数与 uncertainty ratio 仍是 MealNote V1 产品假设，不冒充来源表数据。
 
-### S3.5-E — 形成性真人测试（工具包当前候选，现场执行未开始）
+### S3.5-E — 形成性真人测试（工具包已合并 PR #14，现场执行未开始）
 
 - [x] 固定 5 个 supported core-flow tasks + 1 个 unsupported-food guardrail task，并用五种轮换降低学习顺序偏差；
 - [x] 固定 active-time 口径：读题不计时，从第一次产品交互到可见保存成功、放弃或 guardrail 停止；单题最多 120 秒；
@@ -265,6 +265,20 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 - [ ] 运行汇总并据真实结果决定 `NO_GO` / `READY_FOR_S4_WITH_FINDINGS` / `READY_FOR_S4`。
 
 **边界：** 工具包不修改生产 UI、不加遥测、不联网传输研究数据，也不生成任何虚构参与者结果。在五个真实 session 完成前，S4 gate 保持未通过。
+
+**结果解释边界：** F01–F05 验证 8-profile catalog 内的 supported flow，F06 验证 unsupported-food guardrail。即使结果为 `READY_FOR_S4`，也不能据此声称 corpus-wide food resolution 已解决；当前 synthetic baseline 仍有 38/90（42%）analysis failures，specific-identity catalog coverage 为 58/111（52.3%）。
+
+**工具包状态：** PR #14 已在 exact head `4f637f718b52a0a27a2806422b0aa5c35bf15d1a` 独立复审通过，并 merge 为 `ff56630527ad48cc48f2bdb0353f1dae98587f76`。尚无真实 participant result。
+
+### Pre-S5 — OpenAI provider contract baseline（已合并 PR #15）
+
+- [x] mock 覆盖现有 Responses request、strict schema、两种 structured-output 读取形式与无配置路径；
+- [x] unknown / compound candidate 保持原名，仍由 exact catalog resolver fail closed；
+- [x] nutrition truth、未受信 catalog suggestion、malformed/missing output、HTTP error 与 timeout 均有回归；
+- [x] `/api/analyze` 覆盖成功、文字 heuristic fallback 与 image-only 安全 502，内部错误不泄漏；
+- [ ] 原始文本 evidence mismatch 尚不可测试；它依赖独立的 `source_evidence` schema/validation 切片。
+
+**边界：** PR #15 是 proposal D 的 6/7 contract baseline，不是完整 D、真实模型质量评估或 S5。它没有修改生产 runtime，merge commit 为 `0258a7a221ce7e5f34958648818ca493560f02eb`。
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 
@@ -328,9 +342,9 @@ npm run build
 
 ## 8. 下一步
 
-S0–S3、S3.5-A/B/C 与首批 source-reviewed catalog 均已合并。当前下一门是 S3.5-E 形成性真人测试：先独立审查并合并匿名、本地、无生产遥测的研究工具包，再完成 5 人 × 6 个固定任务。没有真实 fieldwork 数据时不得把 gate 标为 PASS；完成并处理 hard-gate findings 后才进入 S4 Auth。
+S0–S3、S3.5-A/B/C/D、形成性真人测试工具包与 OpenAI provider contract baseline 均已合并。当前唯一下一门是 S3.5-E 形成性真人测试：固定同一个 exact commit，完成 5 人 × 6 个固定任务。没有真实 fieldwork 数据时不得把 gate 标为 PASS；完成并处理 hard-gate findings 后才进入 S4 Auth。
 
-`source_evidence` 与 OpenAI provider contract 仍是必须完成的真实模型信任门，但不阻塞 S4；它们必须在 S5 配置真实 key 前完成。
+`source_evidence` 与 provider contract 的 evidence-mismatch case 仍是必须完成的真实模型信任门，但不阻塞 S4；它们必须在 S5 配置真实 key 前完成。PR #15 已覆盖其余现有 provider contract，但没有运行真实模型。
 
 工程约定变更：CI 已上线（`.github/workflows/ci.yml`，PR #8）。每个 PR 复用它，不再新建一次性验证 workflow。
 

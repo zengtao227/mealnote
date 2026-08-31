@@ -6,6 +6,8 @@ This is the bounded product-value gate between S3.5 catalog/recovery work and S4
 
 It is **not** M5 release validation, nutrition-accuracy research, or a claim that MealNote has achieved the 10-second target.
 
+The five supported tasks intentionally exercise flows inside the current 8-profile catalog, while F06 exercises the unsupported-food guardrail. A `READY_FOR_S4` result would show that these bounded flows are usable enough to continue; it would **not** show that general food resolution or catalog coverage is adequate. The current synthetic baseline still has 38/90 analysis-failure meals (42%) and 58/111 specific-identity catalog coverage (52.3%).
+
 ## Privacy and consent
 
 - Tell participants that the product, not the participant, is being tested and that they may stop at any time.

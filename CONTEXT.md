@@ -1,6 +1,6 @@
 # MealNote Project Context
 
-**Last curated:** 2026-08-27
+**Last curated:** 2026-08-31
 **Canonical project name / brand / package / directory:** `MealNote` / `mealnote`
 **Repository:** `zengtao227/mealnote`
 **Canonical local path:** `/Users/zengtao/Doc/My code/mealnote`
@@ -212,22 +212,31 @@ S2  confirmation + nutrition correctness  DONE (merged PR #6)
  ↓
 S3  image + local persistence hardening   DONE (merged PR #7)
  ↓
-S3.5-A corpus + heuristic baseline        CURRENT CANDIDATE
+S3.5-A corpus + heuristic baseline        DONE (merged PR #10)
  ↓
-S3.5-B missing-item recovery + catalog UX
+S3.5-B missing-item recovery + catalog UX DONE (merged PR #11)
  ↓
-S3.5 catalog audit/batch + formative test
+S3.5-C collision audit                    DONE (merged PR #12)
+ ↓
+S3.5-D source-reviewed catalog batch 1    DONE (merged PR #13)
+ ↓
+S3.5-E formative study kit                DONE (merged PR #14)
+ ↓
+S3.5-E five-person fieldwork              REQUIRED — S4 BLOCKED
  ↓
 S4  Supabase Auth + PostgreSQL adapter
  ↓
+pre-S5 source evidence                    DEFERRED
+ ↓
 S5  real OpenAI quality slice
+    (provider contract baseline merged PR #15)
  ↓
 M5  real-user validation / V1 release gate
 ```
 
-### Current S2 scope guard
+### S2 scope as merged
 
-PR #6 must stay limited to confirmation and nutrition correctness:
+PR #6 stayed limited to confirmation and nutrition correctness:
 
 - unknown/broad/compound candidates cannot become hidden nutrition authority;
 - trusted profile resolution is exact canonical/curated alias only;
@@ -239,7 +248,7 @@ PR #6 must stay limited to confirmation and nutrition correctness:
 - user edits clear stale assumptions; provenance/recognition metadata are explicitly client-reported until server-verifiable binding exists;
 - representative and adversarial regression tests prove deterministic and fail-closed behavior.
 
-Do **not** mix Supabase Auth, real OpenAI deployment, image decode hardening, localStorage resilience/versioning, database-schema redesign, or product expansion into S2.
+Do **not** retroactively mix Supabase Auth, real OpenAI deployment, image decode hardening, localStorage resilience/versioning, database-schema redesign, or product expansion into S2.
 
 ### S3 scope as merged
 
@@ -301,4 +310,6 @@ A new developer or agent should read, in this order:
 4. `docs/DEVELOPMENT_PLAN.md` — current implementation sequence;
 5. the current branch diff and tests — actual source of truth for the task at hand.
 
-S0-S3 are merged. S3.5 is partially approved: A1/A4 is the current candidate and must be independently reviewed before merge. Its synthetic text/heuristic baseline contains 90 meals / 112 expected mentions and currently reports 58.9% extraction recall, 49.5% specific-identity catalog coverage, 41.1% current-UI-recoverable meals, and zero silent wrong or unattributed trusted candidates. These numbers are deterministic regression evidence only, not real-user or 10-second validation. After A1/A4, implement missing-item recovery + catalog search, then collision audit and a source-reviewed small catalog batch, followed by an early formative usability test. S4 Auth follows that bounded product-value slice; source evidence and OpenAI contract tests remain mandatory before S5 real-key deployment.
+S0-S3 and the S3.5 corpus, recovery UI, collision audit, first source-reviewed catalog batch, and formative-study kit are merged through PR #14. The current 8-profile synthetic text/heuristic baseline contains 90 meals / 112 expected mentions and reports 58.9% extraction recall, 52.3% specific-identity catalog coverage, 44.4% current-UI-recoverable meals, 42% analysis-failure meals, and zero silent wrong or unattributed trusted candidates. These numbers are deterministic regression evidence only, not real-user, OpenAI, nutrition-accuracy, or 10-second validation.
+
+PR #15 added a test-only OpenAI provider contract baseline. It covers the existing provider/request/fallback boundary but does not implement `source_evidence`, run a real model, or unlock S4/S5. The immediate gate is five real participants completing the six fixed S3.5-E tasks on one pinned commit. Until those sessions are summarized, S4 remains blocked and production runtime code stays frozen. A green formative result would apply only to the five supported flows plus the explicit unsupported-food guardrail; it must not be generalized to the corpus-wide extraction and coverage gaps. `source_evidence` remains mandatory before S5 real-key deployment.

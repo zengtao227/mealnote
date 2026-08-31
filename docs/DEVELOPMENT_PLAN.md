@@ -1,8 +1,8 @@
 # MealNote 开发计划
 
 **目标：** 先把当前可运行 demo 的安全、数据正确性和审计边界闭合，再接入真实账号、云端持久化和真实 AI。
-**当前阶段：** S0–S3、S3.5-A 与 S3.5-B 已完成并合并；CI 已上线；S3.5 catalog collision audit 正在形成候选，S4/S5 尚未开始。
-**最后复核：** 2026-08-29
+**当前阶段：** S0–S3、S3.5-A/B/C 与首批 source-reviewed catalog 已合并；形成性真人测试工具包正在形成候选，现场数据尚未采集；S4/S5 尚未开始。
+**最后复核：** 2026-08-30
 **工作方式：** 垂直切片、每步可运行、每个不确定性都保留回退；不为了“生产感”提前引入复杂基础设施。
 
 ## 1. 交付原则
@@ -240,7 +240,7 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 
 **边界：** prefix/substring 仍只用于 UI discovery；本审计不会授予 nutrition authority，也不代表任何新增 food/recipe 已通过 nutrition-source review。
 
-### S3.5-D — Discovery catalog batch 1（当前候选）
+### S3.5-D — Discovery catalog batch 1（已合并 PR #13）
 
 - [x] 选品只使用冻结 discovery split：`糯米饭` 以 3 次 miss 成为最高频 unsupported identity；holdout 不参与选品；
 - [x] 只增加一条 plain cooked `糯米饭` profile，营养中央值逐项引用日本文部科学省食品成分数据库 2023 增补版 item 01154；
@@ -249,8 +249,22 @@ Local persistence accepts the previous raw `SavedMeal[]` format only after stric
 - [x] baseline corpus 与 holdout membership 不变；report 更新为 8 profiles、catalog coverage 58/111（52.3%），silent wrong / unattributed trusted candidate 均为 0；
 - [x] current-UI recoverability 定义同步 S3.5-B：成功分析后的 catalog-supported omission 可经“新增 + 明确确认”恢复，analysis failure、broad 或 unsupported identity 仍不可恢复；
 - [x] `粥`、`肥牛`、`馒头` 因 identity/成分变异或数据许可边界暂缓，不为追求数量使用不等价营养数据。
+- [x] exact head `354842be8c5871e9bf259faddfe0051d784374c8` 经独立复审 APPROVE，并 squash-merge 到 `main` commit `6175886452d5fd39cc59c3add6896aef0b93f4bc`。
 
 **边界：** 本批不证明真实用户分布、家庭做法营养准确性、图片/语音/OpenAI 质量或“10 秒”达标；碗/默认克数与 uncertainty ratio 仍是 MealNote V1 产品假设，不冒充来源表数据。
+
+### S3.5-E — 形成性真人测试（工具包当前候选，现场执行未开始）
+
+- [x] 固定 5 个 supported core-flow tasks + 1 个 unsupported-food guardrail task，并用五种轮换降低学习顺序偏差；
+- [x] 固定 active-time 口径：读题不计时，从第一次产品交互到可见保存成功、放弃或 guardrail 停止；单题最多 120 秒；
+- [x] 只记录 pseudonymous code、固定 task ID、duration、枚举 outcome/actions/issues 与 authority-violation flag；不记录姓名、时间戳、实际餐食、原始输入或自由文本；
+- [x] 本地 strict validator/summary CLI 要求六题恰好一次且顺序与 rotation 一致；缺少五个 session 时明确 `FIELDWORK_INCOMPLETE` 并退出非零；
+- [x] hard gate：任一 authority violation、任一 supported task 少于 4/5 保存、或 F06 少于 4/5 明确安全拒绝，均为 `NO_GO`；
+- [x] median/P90 只对已保存的 supported tasks 计算；超过 PRD 10 秒目标必须报告 finding，但 5 人形成性样本不得冒充 M5 发布验证；
+- [ ] 招募并完成 5 名参与者 × 6 个固定任务；真实 result JSON 只留本地且不得提交；
+- [ ] 运行汇总并据真实结果决定 `NO_GO` / `READY_FOR_S4_WITH_FINDINGS` / `READY_FOR_S4`。
+
+**边界：** 工具包不修改生产 UI、不加遥测、不联网传输研究数据，也不生成任何虚构参与者结果。在五个真实 session 完成前，S4 gate 保持未通过。
 
 ### S4 — Supabase Auth + PostgreSQL adapter
 
@@ -314,7 +328,7 @@ npm run build
 
 ## 8. 下一步
 
-S0–S3 与 S3.5-A 已合并。S3.5-B“新增遗漏项 + catalog 搜索”是当前候选；它先拆除 provider omission 无法补回的硬墙，但不改变 baseline、catalog 内容或服务端信任等级。B 独立复审并合并后，先把别名/canonical collision audit 固化进 CI，再依据 discovery misses 做 nutrition-source-reviewed 小批 catalog，并进行早期形成性真人测试。完成这段有界产品价值验证后进入 S4 Auth。
+S0–S3、S3.5-A/B/C 与首批 source-reviewed catalog 均已合并。当前下一门是 S3.5-E 形成性真人测试：先独立审查并合并匿名、本地、无生产遥测的研究工具包，再完成 5 人 × 6 个固定任务。没有真实 fieldwork 数据时不得把 gate 标为 PASS；完成并处理 hard-gate findings 后才进入 S4 Auth。
 
 `source_evidence` 与 OpenAI provider contract 仍是必须完成的真实模型信任门，但不阻塞 S4；它们必须在 S5 配置真实 key 前完成。
 

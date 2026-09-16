@@ -3,6 +3,7 @@
 ## Completed
 - 2026-09-16：接入 lean review auto-check 试点（分支 `feat/lean-review-pilot`，commit `99902a3`）。八项场景实测通过。
 - 2026-09-16：用瘦身判据对**真实代码**做了第一次审查（此前只用 `scratch_probe.ts` 探针验证机制）。
+- 2026-09-16：同步修复 lean-review 三个边界：staged index 指纹、rename/copy `-z` 解析、scope 回到 0 后清失效 pending；与 codex-remaining 镜像 md5 `308ece13…`，定向与核心回归全绿。
 
 ## Current State
 - 试点分支未合并 main。日志 `.agent/lean-review/log.jsonl`（gitignore）。

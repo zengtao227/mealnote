@@ -24,3 +24,7 @@ next-env.d.ts
 # local, pseudonymous formative-study results
 /studies/formative/s3.5-v1/results/*
 !/studies/formative/s3.5-v1/results/.gitkeep
+
+# lean review 试点的本地状态与流水（不入库）
+.agent/lean-review/
+__pycache__/

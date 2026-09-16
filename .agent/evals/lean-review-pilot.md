@@ -5,7 +5,7 @@
 
 ## 与 codex-remaining 的关系
 
-`.claude/hooks/lean_review.py` 是**两仓逐字节相同的镜像对**（`md5 308ece13…`）。
+`.claude/hooks/lean_review.py` 是**两仓逐字节相同的镜像对**（`md5 e2cd81a2…`）。
 改任何一处必须同步另一处并重新核对 md5——这与 `CLAUDE.md` / `AGENTS.md` 的做法一致。
 脚本里与仓库相关的只有 `REPO`（从自身路径推导），其余通用。
 
@@ -33,6 +33,14 @@ Next.js/TS 仓（41 个 ts 文件 + node_modules/.next）指纹计算耗时 **0.
 3. 先 BLOCK、随后代码完全回到 session baseline 时，空 scope 会清掉已失效的 pending 义务并 SKIP。
 
 临时 Git 仓回归同时确认：dirty session baseline 不误拦、本轮提交后仍能发现、有效 receipt 连续 PASS、审后再改会 BLOCK、pause 在非空 scope 下仍保留义务。
+
+## 2026-09-16 最终复审修复
+
+同步关闭两项 Medium：
+- fingerprint 只覆盖 `is_code(path)`，所以 receipt 后只改 Markdown / `.agent/**` 不再误报过期；
+- hook 内部异常会 append `decision=error` 并写 stderr；Stop/SessionStart 作为补救型 hook 返回 0，CLI 子命令异常返回 1。
+
+回归：README/.agent-only 改动后 receipt 继续 PASS；无 commit 仓触发内部异常时有 error 日志、无 traceback；staged-index 与 revert-pending 旧修复仍 PASS；双仓 `py_compile` / `cmp` 通过。
 
 ## 状态
 

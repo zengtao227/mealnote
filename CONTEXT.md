@@ -3,7 +3,7 @@
 **Last curated:** 2026-08-31
 **Canonical project name / brand / package / directory:** `MealNote` / `mealnote`
 **Repository:** `zengtao227/mealnote`
-**Canonical local path:** `/Users/zengtao/Doc/My code/mealnote`
+**Canonical local path:** `<projects>/APP/mealnote` (owner's Mac, outside iCloud-synced folders)
 
 > This file is the durable handoff context for humans and coding agents. It records project intent, current implementation truth, non-negotiable boundaries, known risks and the next approved development direction. When this file conflicts with current code/tests, the current code plus verified evidence wins and this file must be updated.
 
